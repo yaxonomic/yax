@@ -1,6 +1,7 @@
 """Alignment Module
-
-This module is responsible for aligning reads to references and generating a .sam file with the alignment data
+This module is responsible for aligning the trimmed reads to the
+reduced set of gi references output by the aggregation module and
+generating a .sam file with the alignment data
 """
 
 import subprocess
@@ -48,6 +49,8 @@ class Alignment:
 
     def run(self):
         """Calls bowtie2 and executes the alignment. Outputs a .sam file"""
+        # Builds indexes for the references, not sure if we need to build indexes for this step
+        # or if the indexes will be pre-computed
         index_directory = self.working_directory + "index/index"
         subprocess.call([self.bowtie_location + "bowtie2-build", self.gi_reference_set, index_directory])
         subprocess.call([self.bowtie_location + "bowtie2-align", "-x", index_directory, "-U", self.trimmed_reads, "-S",
