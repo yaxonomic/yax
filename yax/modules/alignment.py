@@ -21,9 +21,6 @@ class Alignment:
             An initialized Alignment object
         """
         self.module_name = "alignment"
-        self.input_artifact = input_artifact
-        self.output_artifact = output_artifact
-        self.config = config
 
         # Get reads and reference locations from input artifact
         self.gi_reference_set = input_artifact.gi_reference_set
