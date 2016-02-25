@@ -21,6 +21,9 @@ class Summary:
         self.num_samples = int(parser.get(self.module_name, "number_of_samples"))
         self.num_samples = int(parser.get(self.module_name, "number_of_samples"))
 
+    def __call__(self):
+        return self.generate_summary()
+
     def verify_params(self):
         """To do: verifies the validity of the config parameters
         Returns:
@@ -28,7 +31,7 @@ class Summary:
         """
         pass
 
-    def run(self):
+    def generate_summary(self):
 
         for sample in range(self.num_samples):
             # For every sample, create a summary file

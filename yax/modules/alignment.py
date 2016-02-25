@@ -37,6 +37,9 @@ class Alignment:
         self.bowtie_build_arguments = parser.get(self.module_name, "bowtie_build_arguments")
         self.working_directory = parser.get(self.module_name, "working_directory")
 
+    def __call__(self):
+        return self.run_alignment()
+
     def verify_params(self):
         """To do: verifies the validity of the config parameters
         Returns:
@@ -44,7 +47,7 @@ class Alignment:
         """
         pass
 
-    def run(self):
+    def run_alignment(self):
         """Calls bowtie2 and executes the alignment. Outputs a .sam file"""
         # Builds indexes for the references, not sure if we need to build indexes for this step
         # or if the indexes will be pre-computed
