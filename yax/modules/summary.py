@@ -59,6 +59,8 @@ class Summary:
 
             writer.close()
 
+            return output_path
+
     def parse_summary_data(self, summary_stats, summary_table,
                            coverage_data, order_method, total_results):
         stats = open(summary_stats, 'r')
