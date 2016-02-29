@@ -63,9 +63,9 @@ class Summary(Module):
             # Get ordered list of tax ids and gis
             tax_ids, gis = self.parse_summary_data(summary_stats,
                                                    summary_table,
-                                                   coverage_data,
-                                                   order_method,
-                                                   total_results)
+                                                   coverage_data)
+            tax_ids, gis = self.order_results(tax_ids, gis, order_method,
+                                              total_results)
             template_data = ""
             for j, tax_id in enumerate(tax_ids):
                 coverage_plot = self.generate_coverage_plot(coverage_data)
@@ -91,12 +91,31 @@ class Summary(Module):
 
             return output_path
 
-    def parse_summary_data(self, summary_stats, summary_table,
-                           coverage_data, order_method, total_results):
+    def parse_summary_data(self, summary_stats, summary_table, coverage_data):
         # stats = open(summary_stats, 'r')
         # table = open(summary_table, 'r')
-        # coverage = open(coverage_data, 'r')
-        return ["5", "3", "8"], [["2", "7", "4"], ["1", "8", "5"], ["9", "11", "3"]]
+
+        with open(coverage_data, 'r') as sam_file:
+            sam_lines = sam_file.readlines()
+
+        tax_ids = set()
+        gis = set()
+
+        for line in sam_lines:
+            if line[0] == '@':
+                continue
+            current_line = line.split('\t')
+
+            gi = current_line[2].split('|')[1]
+            tax_id = current_line[2].split('|')[3]
+
+            tax_ids.add(tax_id)
+            gis.add(gi)
+
+        return tax_ids, gis
+
+    def order_results(self, tax_ids, gis, order_method, total_results):
+        return tax_ids, gis
 
     def generate_coverage_plot(self, coverage_data):
         # coverage = open(coverage_data, 'r')
