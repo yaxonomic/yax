@@ -5,6 +5,7 @@ generating a .sam file with the alignment data
 """
 
 import subprocess
+import os
 from yax.state.module import Module
 from yax.state.type import Artifact, Parameter
 
@@ -20,8 +21,8 @@ class Alignment(Module):
         sample_reads = []
         output_directory = ""
 
-        bowtie_options = []
-        bowtie_location = ""
+        bowtie_options = BowtieArguments([])
+        bowtie_location = BowTieLocation("/usr/bin/bowtie2/")
 
         return self.run_alignment(gi_references, sample_reads,
                                   output_directory, bowtie_options,
@@ -31,7 +32,7 @@ class Alignment(Module):
                       bowtie_options, bowtie_location):
         """Calls bowtie2 and executes the alignment. Outputs a .sam file"""
 
-        command = [bowtie_location + "bowtie2-build", gi_references, "index"]
+        command = [bowtie_location + "/bowtie2-build", gi_references, "index"]
         try:
             # Build bowtie indexes
             subprocess.call(command)
@@ -40,7 +41,7 @@ class Alignment(Module):
             print(e)
 
         for i, sample in enumerate(sample_reads):
-            command = [bowtie_location + "bowtie2-align"] + bowtie_options + \
+            command = [bowtie_location + "/bowtie2-align"] + bowtie_options + \
                       ["-x", "index", "-U", sample, "-S",
                        output_directory + "sample_" + str(i) + "coverage.sam"]
             try:
@@ -52,24 +53,34 @@ class Alignment(Module):
 
         return
 
-# Artifacts
-
-
-class GiReferenceSet(Artifact):
-    pass
-
-
-class TrimmedReads(Artifact):
-    pass
-
-
-class SamFiles(Artifact):
-
-    def __init__(self, file_path):
-        self.file_path = file_path
-
 # Parameters
 
 
-class BowtieOptions(Parameter):
-    pass
+class BowtieArguments(Parameter):
+
+    def __init__(self, value):
+        super().__init__(key="bowtie-arguments", value=value)
+
+    def _validate_(self):
+        try:
+            for arg in self.value:
+                pass
+            return True
+        except Exception:
+            return False
+
+
+class BowTieLocation(Parameter):
+
+    def __init__(self, value):
+        super().__init__(key="bowtie-location", value=value)
+
+    def _validate_(self):
+        try:
+            if not os.path.isdir(self.value):
+                return False
+            if self.value.split('/').rstrip('/')[-1] == "bowtie2":
+                return True
+            return False
+        except Exception:
+            return False
