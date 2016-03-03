@@ -19,10 +19,10 @@ class Summary(Module):
     def __call__(self):
         summary_stats = ""
         summary_table = ""
-        coverage_data = []
+        coverage_data = ["/home/hayden/Desktop/bowtie/output.sam"]
         order_method = ""
         total_results = 10
-        num_samples = 5
+        num_samples = 1
         output_path = "/home/hayden/Desktop/"
         final_output_path = "/home/hayden/Desktop/"
 
@@ -49,7 +49,7 @@ class Summary(Module):
         :param output_path: Location to right the pdf for the final artifact
         :param final_output_path: Location to right the pdf, specified by the
         user
-        :return:
+        :return: file path to the directory containing the output pdfs
         """
 
         # Get HTML templates
@@ -59,64 +59,105 @@ class Summary(Module):
                                  .readlines())
 
         # For each sample, fill out templates with appropriate data
-        for i, sample in enumerate(range(num_samples)):
+        for sample in range(num_samples):
             # Get ordered list of tax ids and gis
-            tax_ids, gis = self.parse_summary_data(summary_stats,
-                                                   summary_table,
-                                                   coverage_data)
-            tax_ids, gis = self.order_results(tax_ids, gis, order_method,
-                                              total_results)
+            alignments = self.parse_summary_data(summary_stats,
+                                                 summary_table,
+                                                 coverage_data[sample], 1)
+
             template_data = ""
-            for j, tax_id in enumerate(tax_ids):
-                coverage_plot = self.generate_coverage_plot(coverage_data)
-                # Fill out template with tax id, gis, and a coverage plot
-                gis_string = '<li>' + '</li><li>'.join(gis[j]) + '</li>'
-                template_data += tax_id_snippet.format(tax_id,
-                                                       gis_string,
-                                                       coverage_plot)
+            for i, tax_id in enumerate(alignments.keys()):
+                gi_string = ""
+                for j, gi in enumerate(alignments[tax_id].keys()):
+                    coverage_plot = \
+                        self.generate_coverage_plot(alignments[tax_id][gi])
+                    gi_string = tax_id_snippet.format(gi, tax_id,
+                                                      coverage_plot)
+                template_data += gi_string
 
             writer = StringIO()
             writer.write(template.format(template_data))
 
             # Write pdf to output artifact location
             pdfkit.from_string(writer.getvalue(),
-                               output_path + "sample_" + str(i) + ".pdf")
+                               output_path + "sample_" + str(sample + 1) +
+                               ".pdf")
 
             # Write pdf to location specified in config
             pdfkit.from_string(writer.getvalue(),
-                               final_output_path + "final_sample_" + str(i) +
-                               ".pdf")
+                               final_output_path + "final_sample_" +
+                               str(sample + 1) + ".pdf")
 
             writer.close()
 
             return output_path
 
-    def parse_summary_data(self, summary_stats, summary_table, coverage_data):
+    def parse_summary_data(self, summary_stats, summary_table, coverage_data,
+                           nm_max):
         # stats = open(summary_stats, 'r')
         # table = open(summary_table, 'r')
 
         with open(coverage_data, 'r') as sam_file:
             sam_lines = sam_file.readlines()
 
-        tax_ids = set()
-        gis = set()
+        alignments = {}
 
         for line in sam_lines:
-            if line[0] == '@':
+            try:
+                if line[0] == '@':
+                    continue
+                current_line = line.split('\t')
+
+                nm = False
+                for tag in current_line[11:]:
+                    if "NM" in tag:
+                        nm = int(tag.split(':')[2]) < nm_max
+                        break
+                if not nm:
+                    continue
+
+                tax_id = current_line[2].split('|')[3]
+
+                if tax_id not in alignments:
+                    alignments[tax_id] = {}
+                tax_id = alignments[tax_id]
+
+                gi = current_line[2].split('|')[1]
+                if gi not in tax_id:
+                    tax_id[gi] = []
+                gi = tax_id[gi]
+
+                alignment = {}
+                read_number = current_line[0]
+                position = current_line[3]
+                length = len(current_line[9])
+                alignment["read_number"] = read_number
+                alignment["start_position"] = position
+                alignment["length"] = length
+
+                gi.append(alignment)
+
+            except Exception:
                 continue
-            current_line = line.split('\t')
 
-            gi = current_line[2].split('|')[1]
-            tax_id = current_line[2].split('|')[3]
+        return alignments
 
-            tax_ids.add(tax_id)
-            gis.add(gi)
+    def order_results(self, alignments, order_method, total_results):
+        return alignments
 
-        return tax_ids, gis
+    def generate_coverage_plot(self, gi):
+        try:
+            template_str = ""
+            for alignment in gi:
+                read_number = alignment["read_number"]
+                start_pos = alignment["start_position"]
+                align_length = alignment["length"]
+                end_pos = int(start_pos) + int(align_length)
+                template_str += \
+                    ("<li>Read Number: {3} - Start: {0} - End: {1} - "
+                     "Length: {2}</li>"
+                     .format(start_pos, end_pos, align_length, read_number))
+            return template_str
+        except Exception:
+            return None
 
-    def order_results(self, tax_ids, gis, order_method, total_results):
-        return tax_ids, gis
-
-    def generate_coverage_plot(self, coverage_data):
-        # coverage = open(coverage_data, 'r')
-        return "COVERAGE PLOT GOES HERE"
