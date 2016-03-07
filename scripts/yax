@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+import click
+from yax.state.jones import Indiana
+
+@click.group()
+def cli():
+    pass
+
+
+@cli.command("info", help='This is the worst command. DO NOT USE.')
+def info():
+    indiana = Indiana()
+    click.echo(repr(indiana))
+
+if __name__ == "__main__":
+    cli()
