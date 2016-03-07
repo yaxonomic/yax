@@ -8,5 +8,6 @@ setup(
     version='0.0.1dev',
     long_description=long_description,
     packages=find_packages(),
-    install_requires=[],
+    install_requires=['click'],
+    scripts=['scripts/yax']
 )
