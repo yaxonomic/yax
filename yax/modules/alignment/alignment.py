@@ -13,7 +13,6 @@ from yax.state.type import Str
 
 def main(output: Alignments, reads: Reads, gi_references: GiReferences,
          bowtie_options: Str):
-
     return run_alignment(gi_references, reads, output, bowtie_options)
 
 
