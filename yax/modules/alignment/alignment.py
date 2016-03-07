@@ -5,82 +5,44 @@ generating a .sam file with the alignment data
 """
 
 import subprocess
-import os
-from yax.state.module import Module
-from yax.state.type import Artifact, Parameter
+from yax.artifacts.alignments import Alignments
+from yax.artifacts.reads import Reads
+from yax.artifacts.gi_references import GiReferences
+from yax.state.type import Str
 
 
-class Alignment(Module):
+def main(output: Alignments, reads: Reads, gi_references: GiReferences,
+         bowtie_options: Str):
 
-    def __init__(self):
-        super.__init__()
+    return run_alignment(gi_references, reads, output, bowtie_options)
 
-    def __call__(self):
 
-        gi_references = ""
-        sample_reads = []
-        output_directory = ""
+def run_alignment(gi_references, sample_reads, output,
+                  bowtie_options):
+    """
+    :param gi_references: Location of gi references
+    :param sample_reads: Location of reads trimmed by ReadPrep
+    :param output: Artifact to fill out with sam file alignments
+    :param bowtie_options: Optional bowtie parameters
+    """
 
-        bowtie_options = BowtieArguments([])
-        bowtie_location = BowTieLocation("/usr/bin/bowtie2/")
+    command = ["bowtie2-build", gi_references, "index"]
+    try:
+        # Build bowtie indexes
+        subprocess.call(command)
+    except Exception as e:
+        print("ALIGNMENT: Failed to build bowtie indexes.")
+        print(e)
 
-        return self.run_alignment(gi_references, sample_reads,
-                                  output_directory, bowtie_options,
-                                  bowtie_location)
-
-    def run_alignment(self, gi_references, sample_reads, output_directory,
-                      bowtie_options, bowtie_location):
-        """Calls bowtie2 and executes the alignment. Outputs a .sam file"""
-
-        command = [bowtie_location + "/bowtie2-build", gi_references, "index"]
+    for i, sample in enumerate(sample_reads):
+        command = ["bowtie2-align"] + bowtie_options + \
+                  ["-x", "index", "-U", sample, "-S",
+                   output + "sample_" + str(i) + "coverage.sam"]
         try:
-            # Build bowtie indexes
+            # Align sequences to references
             subprocess.call(command)
         except Exception as e:
-            print("ALIGNMENT: Failed to build bowtie indexes.")
+            print("ALIGNMENT: Failed to perform bowtie alignment.")
             print(e)
 
-        for i, sample in enumerate(sample_reads):
-            command = [bowtie_location + "/bowtie2-align"] + bowtie_options + \
-                      ["-x", "index", "-U", sample, "-S",
-                       output_directory + "sample_" + str(i) + "coverage.sam"]
-            try:
-                # Align sequences to references
-                subprocess.call(command)
-            except Exception as e:
-                print("ALIGNMENT: Failed to perform bowtie alignment.")
-                print(e)
-
-        return
-
-# Parameters
-
-
-class BowtieArguments(Parameter):
-
-    def __init__(self, value):
-        super().__init__(key="bowtie-arguments", value=value)
-
-    def _validate_(self):
-        try:
-            for arg in self.value:
-                pass
-            return True
-        except Exception:
-            return False
-
-
-class BowTieLocation(Parameter):
-
-    def __init__(self, value):
-        super().__init__(key="bowtie-location", value=value)
-
-    def _validate_(self):
-        try:
-            if not os.path.isdir(self.value):
-                return False
-            if self.value.split('/').rstrip('/')[-1] == "bowtie2":
-                return True
-            return False
-        except Exception:
-            return False
+    return output
