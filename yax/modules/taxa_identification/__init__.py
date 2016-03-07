@@ -1,9 +1,7 @@
-from . import bowtie2alignment, bowtie2indexbuilder, GetTaxIDsFromAlignment, \
-              TaxIDBranchwtaxidsig
 
-class Alignments():
+class Alignments:
     pass
 
-def main(output: Alignments):
-    pass
 
+def main():
+    pass
