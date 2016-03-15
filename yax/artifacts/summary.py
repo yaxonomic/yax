@@ -1,5 +1,5 @@
 from yax.state.type import Artifact
 
 
-class Pdf(Artifact):
+class Summary(Artifact):
     pass
