@@ -6,6 +6,7 @@ order this list of Gis.
 """
 
 import pdfkit
+import matplotlib as mpl
 import matplotlib.pyplot as pyplot
 import os
 import os.path
@@ -49,10 +50,11 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
                                .readlines())
 
     coverage_data = _get_files(coverage_data)
-    print(coverage_data)
     # For each sample, fill out templates with appropriate data
     for n, sample in enumerate(coverage_data):
         # Get ordered list of tax ids and gis
+        print('Calculating coverage data:' + str(n + 1) + '/' +
+              str(len(coverage_data)))
         coverage = _parse_summary_data(sample, 1)
         _set_hit_data(coverage, summary_stats, summary_table)
         calculate_coverage_stats(coverage)
@@ -61,6 +63,8 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
 
         template_data = ""
         for i, reference in enumerate(references):
+            print('Generating coverage plot: ' + str(i + 1) + '/' +
+                  str(len(references)))
             coverage_plot = _generate_coverage_plot(coverage[reference],
                                                     coverage_snippet, i,
                                                     output_path)
@@ -69,6 +73,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
             gi_string = tax_id_snippet.format(gi, tax_id, coverage_plot)
             template_data += gi_string
 
+        print('Writing output file.')
         writer = StringIO()
         writer.write(template.format(tax_ids, template_data))
 
@@ -151,15 +156,15 @@ def _order_results(coverage, order_method, total_results):
     references = list(coverage.keys())
 
     if order_method == "ABSOLUTE_COVERAGE":
-        references.sort(key=lambda ref: coverage[ref][0])
+        references.sort(key=lambda ref: coverage[ref][0], reverse=True)
     elif order_method == "RELATIVE_COVERAGE":
-        references.sort(key=lambda ref: coverage[ref][1])
+        references.sort(key=lambda ref: coverage[ref][1], reverse=True)
     elif order_method == "TOTAL_HITS":
-        references.sort(key=lambda ref: coverage[ref][2])
+        references.sort(key=lambda ref: coverage[ref][2], reverse=True)
     elif order_method == "INFORMATIVE_HITS":
-        references.sort(key=lambda ref: coverage[ref][3])
+        references.sort(key=lambda ref: coverage[ref][3], reverse=True)
     elif order_method == "UNIQUE_HITS":
-        references.sort(key=lambda ref: coverage[ref][4])
+        references.sort(key=lambda ref: coverage[ref][4], reverse=True)
 
     return references[:total_results]
 
@@ -178,14 +183,20 @@ def calculate_coverage_stats(coverage):
 
 def _generate_coverage_plot(reference, coverage_snippet, n, file_path):
     try:
-        pyplot.figure(figsize=(7, 2.5))
+        mpl.rcParams['patch.antialiased'] = True
+        mpl.rcParams['xtick.labelsize'] = 'small'
+        mpl.rcParams['ytick.labelsize'] = 'small'
+
+        pyplot.figure(figsize=(7, 2.0), dpi=72, tight_layout=True)
         # the histogram of the data
         pyplot.fill_between(range(len(reference) - 5), reference[5:],
                             interpolate=True, color='blue')
         pyplot.xlim(0, len(reference) - 5)
+        pyplot.ylim(ymin=0)
 
         # Axis and labels
         pyplot.xlabel('Sequence')
+        pyplot.ylabel('Depth')
         pyplot.title('Coverage')
         pyplot.grid(False)
 
