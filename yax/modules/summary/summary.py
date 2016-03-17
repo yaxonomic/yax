@@ -6,9 +6,9 @@ order this list of Gis.
 """
 
 import pdfkit
-import matplotlib.mlab
-import matplotlib.pyplot
-import os, os.path
+import matplotlib.pyplot as pyplot
+import os
+import os.path
 from io import StringIO
 from yax.artifacts.summary import Summary
 from yax.artifacts.summary_stats import SummaryStats
@@ -62,7 +62,8 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
         template_data = ""
         for i, reference in enumerate(references):
             coverage_plot = _generate_coverage_plot(coverage[reference],
-                                                    coverage_snippet, i)
+                                                    coverage_snippet, i,
+                                                    output_path)
             gi = reference.split('|')[1]
             tax_id = reference.split('|')[3]
             gi_string = tax_id_snippet.format(gi, tax_id, coverage_plot)
@@ -175,24 +176,24 @@ def calculate_coverage_stats(coverage):
         gi[1] = gi[0] / (len(gi) - 5)
 
 
-def _generate_coverage_plot(reference, coverage_snippet, n):
+def _generate_coverage_plot(reference, coverage_snippet, n, file_path):
     try:
-        data = coverage_snippet.format(str(reference))
-
+        pyplot.figure(figsize=(7, 2.5))
         # the histogram of the data
-        pyplot.hist(reference[5:], len(reference) - 5, normed=1, facecolor='green',
-                    alpha=0.75)
+        pyplot.fill_between(range(len(reference) - 5), reference[5:],
+                            interpolate=True, color='blue')
+        pyplot.xlim(0, len(reference) - 5)
 
         # Axis and labels
         pyplot.xlabel('Sequence')
         pyplot.title('Coverage')
-        pyplot.axis([0, len(reference) - 5, 0, 60])
         pyplot.grid(False)
 
         # Save plot
-        pyplot.savefig('coverage_' + str(n) + '.png')
+        pyplot.savefig(file_path + '/coverage_' + str(n) + '.png')
 
-        return data
+        return coverage_snippet.format(file_path + 'coverage_' + str(n) +
+                                       '.png')
     except Exception:
         return None
 
