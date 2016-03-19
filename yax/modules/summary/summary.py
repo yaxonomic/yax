@@ -22,11 +22,12 @@ def main(output: Summary, summary_stats: SummaryStats,
          summary_table: SummaryTable, coverage_data: CoverageData,
          order_method: Str, total_results: Int, output_path: Directory):
     return _run_summary(summary_stats, summary_table, coverage_data,
-                        order_method,  total_results, output_path)
+                        order_method,  total_results, str(output_path),
+                        output)
 
 
 def _run_summary(summary_stats, summary_table, coverage_data, order_method,
-                 total_results, output_path):
+                 total_results, output_path, output_artifact_path):
     """
     :param summary_stats:
     :param summary_table:
@@ -55,7 +56,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
         # Get ordered list of tax ids and gis
         print('Calculating coverage data:' + str(n + 1) + '/' +
               str(len(coverage_data)))
-        coverage = _parse_summary_data(sample, 1)
+        coverage = _parse_summary_data(sample)
         _set_hit_data(coverage, summary_stats, summary_table)
         calculate_coverage_stats(coverage)
         references = _order_results(coverage, order_method, total_results)
@@ -77,14 +78,21 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
         writer = StringIO()
         writer.write(template.format(tax_ids, template_data))
 
-        # Write pdf to output artifact location
-        pdfkit.from_string(writer.getvalue(), output_path + "sample_" +
+        # Write pdf to configurable output path
+        pdfkit.from_string(writer.getvalue(), str(output_path) + "sample_" +
                            str(n + 1) + ".pdf")
+
+        # Write pdf to output artifact location
+        pdfkit.from_string(writer.getvalue(), str(output_artifact_path) +
+                           "sample_" + str(n + 1) + ".pdf")
         writer.close()
 
 
-def _parse_summary_data(coverage_data, nm_max):
-
+def _parse_summary_data(coverage_data):
+    """
+    Parse sam files and build a dictionary of gis that, for each gi, stores a
+    list of coverage values.
+    """
     with open(coverage_data, 'r') as sam_file:
         sam_lines = sam_file.readlines()
 
@@ -97,16 +105,6 @@ def _parse_summary_data(coverage_data, nm_max):
             elif line[0] == '@':
                 continue
             current_line = line.split('\t')
-
-            '''
-            nm = False
-            for tag in current_line[11:]:
-                if "NM" in tag:
-                    nm = int(tag.split(':')[2]) < nm_max
-                    break
-            if not nm:
-                continue
-            '''
 
             reference = current_line[2]
             position = int(current_line[3])
@@ -121,11 +119,21 @@ def _parse_summary_data(coverage_data, nm_max):
 
 
 def _get_files(coverage_data):
-    return [coverage_data + name for name in os.listdir(coverage_data)
-            if os.path.isfile(coverage_data + name)]
+    """
+    Get a list of files in the coverage_data directory.
+    """
+    try:
+        return [str(coverage_data) + name for name in os.listdir(coverage_data)
+                if os.path.isfile(str(coverage_data) + name)]
+    except Exception:
+        return None
 
 
 def _get_tax_ids(references):
+    """
+    Get a list of tax ids represented by the gis. Return this list as an HTML
+    list.
+    """
     tax_ids = []
     for reference in references:
         tax_id = reference.split('|')[3]
@@ -149,10 +157,24 @@ def _append_reference_array(coverage, line):
 
 
 def _set_hit_data(stats, table, coverage):
+    """
+    Uses summary stats and table to set the number of unique and informative
+    hits for each reference.
+    """
+    with open(stats, 'r') as stats_file:
+        stats_lines = stats_file.readlines()
+
+    with open(table, 'r') as table_file:
+        table_lines = table_file.readlines()
+
+
     pass
 
 
 def _order_results(coverage, order_method, total_results):
+    """
+    Sorts the list of gis by a given key and returns a certain number of gis
+    """
     references = list(coverage.keys())
 
     if order_method == "ABSOLUTE_COVERAGE":
@@ -170,18 +192,28 @@ def _order_results(coverage, order_method, total_results):
 
 
 def calculate_coverage_stats(coverage):
+    """
+    For each gi, counts of number of bases in the sequence that are covered by
+     at least one read to calculate the absolute coverage. Divides this amount
+     by the length of the sequence to get relative coverage.
+    """
     for gi in coverage.values():
         # Calculate absolute coverage
         absolute_coverage = 0
         for base in gi[5:]:
             if int(base) > 0:
                 absolute_coverage += 1
+        # Set absolute coverage
         gi[0] = absolute_coverage
         # Calculate relative coverage
         gi[1] = gi[0] / (len(gi) - 5)
 
 
 def _generate_coverage_plot(reference, coverage_snippet, n, file_path):
+    """
+    Generates a matplotlib coverage plot and returns the HTML <img> tag with
+    the plot as an image.
+    """
     try:
         mpl.rcParams['patch.antialiased'] = True
         mpl.rcParams['xtick.labelsize'] = 'small'
@@ -203,7 +235,7 @@ def _generate_coverage_plot(reference, coverage_snippet, n, file_path):
         # Save plot
         pyplot.savefig(file_path + '/coverage_' + str(n) + '.png')
 
-        return coverage_snippet.format(file_path + 'coverage_' + str(n) +
+        return coverage_snippet.format(str(file_path) + 'coverage_' + str(n) +
                                        '.png')
     except Exception:
         return None
