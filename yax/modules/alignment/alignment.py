@@ -36,12 +36,10 @@ def run_alignment(gi_references, sample_reads, output,
     for i, sample in enumerate(sample_reads):
         command = ["bowtie2-align"] + bowtie_options + \
                   ["-x", "index", "-U", sample, "-S",
-                   output + "sample_" + str(i) + "coverage.sam"]
+                   str(output) + "sample_" + str(i) + "coverage.sam"]
         try:
             # Align sequences to references
             subprocess.call(command)
         except Exception as e:
             print("ALIGNMENT: Failed to perform bowtie alignment.")
             print(e)
-
-    return output

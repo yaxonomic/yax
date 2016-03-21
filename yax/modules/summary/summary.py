@@ -239,7 +239,3 @@ def _generate_coverage_plot(reference, coverage_snippet, n, file_path):
                                        '.png')
     except Exception:
         return None
-
-
-_run_summary(None, None, '/home/hayden/Desktop/bowtie/coverage/',
-             "ABSOLUTE_COVERAGE", 5, '/home/hayden/Desktop/')
