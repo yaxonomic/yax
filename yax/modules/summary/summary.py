@@ -158,17 +158,16 @@ def _append_reference_array(coverage, line):
 
 def _set_hit_data(stats, table, coverage):
     """
+    NOT FINISHED
     Uses summary stats and table to set the number of unique and informative
     hits for each reference.
     """
     with open(stats, 'r') as stats_file:
-        stats_lines = stats_file.readlines()
+        stats_file.readlines()
 
     with open(table, 'r') as table_file:
-        table_lines = table_file.readlines()
-
-
-    pass
+        table_file.readlines()
+    return coverage
 
 
 def _order_results(coverage, order_method, total_results):
