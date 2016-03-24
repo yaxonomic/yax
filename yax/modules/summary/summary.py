@@ -15,19 +15,21 @@ from yax.artifacts.summary import Summary
 from yax.artifacts.summary_stats import SummaryStats
 from yax.artifacts.summary_table import SummaryTable
 from yax.artifacts.coverage_data import CoverageData
-from yax.state.type import Directory, Str, Int
+from yax.state.type.parameter import Directory, Str, Int
 
 
-def main(output: Summary, summary_stats: SummaryStats,
-         summary_table: SummaryTable, coverage_data: CoverageData,
-         order_method: Str, total_results: Int, output_path: Directory):
+def main(working_directory: Directory, output: Summary,
+         summary_stats: SummaryStats, summary_table: SummaryTable,
+         coverage_data: CoverageData, order_method: Str, total_results: Int,
+         bin_size: Int, output_path: Directory):
     return _run_summary(summary_stats, summary_table, coverage_data,
-                        order_method,  total_results, str(output_path),
-                        output)
+                        order_method, total_results, bin_size,
+                        str(output_path), output, str(working_directory))
 
 
 def _run_summary(summary_stats, summary_table, coverage_data, order_method,
-                 total_results, output_path, output_artifact_path):
+                 total_results, bin_size, output_path, output_artifact_path,
+                 working_directory):
     """
     :param summary_stats:
     :param summary_table:
@@ -58,7 +60,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
               str(len(coverage_data)))
         coverage = _parse_summary_data(sample)
         _set_hit_data(coverage, summary_stats, summary_table)
-        calculate_coverage_stats(coverage)
+        calculate_coverage_stats(coverage, bin_size)
         references = _order_results(coverage, order_method, total_results)
         tax_ids = _get_tax_ids(references)
 
@@ -68,7 +70,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
                   str(len(references)))
             coverage_plot = _generate_coverage_plot(coverage[reference],
                                                     coverage_snippet, i,
-                                                    output_path)
+                                                    working_directory)
             gi = reference.split('|')[1]
             tax_id = reference.split('|')[3]
             gi_string = tax_id_snippet.format(gi, tax_id, coverage_plot)
@@ -190,22 +192,29 @@ def _order_results(coverage, order_method, total_results):
     return references[:total_results]
 
 
-def calculate_coverage_stats(coverage):
+def calculate_coverage_stats(coverage, bin_size):
     """
     For each gi, counts of number of bases in the sequence that are covered by
      at least one read to calculate the absolute coverage. Divides this amount
      by the length of the sequence to get relative coverage.
     """
-    for gi in coverage.values():
+    for key in coverage.keys():
+        gi = coverage[key]
         # Calculate absolute coverage
         absolute_coverage = 0
-        for base in gi[5:]:
+        averaged_coverage = []
+        for n, base in enumerate(gi[5:]):
             if int(base) > 0:
                 absolute_coverage += 1
+            averaged_coverage[-1] += int(base)
+            if n % bin_size == 0:
+                averaged_coverage[-1] /= bin_size
+                averaged_coverage.append(0)
         # Set absolute coverage
         gi[0] = absolute_coverage
         # Calculate relative coverage
         gi[1] = gi[0] / (len(gi) - 5)
+        coverage[key] = gi[:5] + averaged_coverage
 
 
 def _generate_coverage_plot(reference, coverage_snippet, n, file_path):
