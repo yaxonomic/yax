@@ -279,10 +279,10 @@ def _generate_coverage_plot(gi, reference, file_path, bin_size, max_y):
         mpl.rcParams['xtick.labelsize'] = 'small'
         mpl.rcParams['ytick.labelsize'] = 'small'
 
-        pyplot.figure(figsize=(7, 1.8), dpi=72, tight_layout=True)
+        pyplot.figure(figsize=(8, 2.057), dpi=72, tight_layout=True)
         # the histogram of the data
         pyplot.fill_between(range(length), y_data, interpolate=True,
-                            color='blue')
+                            color='#409AB8')
         pyplot.xlim(0, length)
         pyplot.ylim(0, max_y)
 
