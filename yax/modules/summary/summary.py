@@ -22,6 +22,7 @@ def main(working_directory: Directory, output: Summary,
          summary_stats: SummaryStats, summary_table: SummaryTable,
          coverage_data: CoverageData, order_method: Str, total_results: Int,
          bin_size: Int, output_path: Directory):
+    print('Running summary.')
     return _run_summary(summary_stats, summary_table, coverage_data,
                         order_method, total_results, bin_size,
                         str(output_path), output, str(working_directory))
@@ -55,30 +56,35 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
     coverage_data = _get_files(coverage_data)
     # For each sample, fill out templates with appropriate data
     for n, sample in enumerate(coverage_data):
-        # Get ordered list of tax ids and gis
-        print('Calculating coverage data:' + str(n + 1) + '/' +
+        print('Calculating coverage data: sample ' + str(n + 1) + '/' +
               str(len(coverage_data)))
-        coverage = _parse_summary_data(sample)
-        _set_hit_data(coverage, summary_stats, summary_table)
-        calculate_coverage_stats(coverage, bin_size)
-        references = _order_results(coverage, order_method, total_results)
-        tax_ids = _get_tax_ids(references)
+        # Get ordered list of tax ids and gis
+        coverage, max_coverage = _parse_summary_data(sample)
 
         template_data = ""
-        for i, reference in enumerate(references):
-            print('Generating coverage plot: ' + str(i + 1) + '/' +
-                  str(len(references)))
-            coverage_plot = _generate_coverage_plot(coverage[reference],
-                                                    coverage_snippet, i,
-                                                    working_directory)
-            gi = reference.split('|')[1]
-            tax_id = reference.split('|')[3]
-            gi_string = tax_id_snippet.format(gi, tax_id, coverage_plot)
-            template_data += gi_string
+        for i, key in enumerate(list(coverage.keys())):
+
+            print('Calculating coverage data: tax id ' + str(i + 1) + '/' +
+              str(len(coverage.keys())))
+
+            tax_id = coverage[key]
+            # _set_hit_data(tax_id, summary_stats, summary_table)
+            calculate_coverage_stats(tax_id, bin_size)
+            references = _order_results(tax_id, order_method, total_results)
+
+            gi_data = ""
+            for j, reference in enumerate(references):
+                coverage_plot = _generate_coverage_plot(tax_id[reference], i+j,
+                                                        working_directory,
+                                                        bin_size, max_coverage)
+
+                gi_data += coverage_snippet.format(coverage_plot)
+            template_data += tax_id_snippet.format(key, "Table goes here.",
+                                                   gi_data)
 
         print('Writing output file.')
         writer = StringIO()
-        writer.write(template.format(tax_ids, template_data))
+        writer.write(template.format(n, template_data))
 
         # Write pdf to configurable output path
         pdfkit.from_string(writer.getvalue(), str(output_path) + "sample_" +
@@ -92,13 +98,14 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
 
 def _parse_summary_data(coverage_data):
     """
-    Parse sam files and build a dictionary of gis that, for each gi, stores a
-    list of coverage values.
+    Parse sam files and build a dictionary of taxids that, for each taxid,
+    stores a list of gis and coverage values for those gis.
     """
     with open(coverage_data, 'r') as sam_file:
         sam_lines = sam_file.readlines()
 
     coverage = {}
+    max_coverage = 0
     for line in sam_lines:
         try:
             if line[:3] == '@SQ':
@@ -108,16 +115,21 @@ def _parse_summary_data(coverage_data):
                 continue
             current_line = line.split('\t')
 
-            reference = current_line[2]
+            reference = current_line[2].split('|')
+            tax_id = reference[3]
+            gi = reference[1]
+
             position = int(current_line[3])
             length = int(len(current_line[9]))
 
             for i in range(position, position + length):
-                coverage[reference][i + 4] += 1
+                coverage[tax_id][gi][i + 5] += 1
+                if coverage[tax_id][gi][i + 5] > max_coverage:
+                    max_coverage = coverage[tax_id][gi][i + 5]
 
         except Exception:
             continue
-    return coverage
+    return coverage, max_coverage
 
 
 def _get_files(coverage_data):
@@ -131,19 +143,6 @@ def _get_files(coverage_data):
         return None
 
 
-def _get_tax_ids(references):
-    """
-    Get a list of tax ids represented by the gis. Return this list as an HTML
-    list.
-    """
-    tax_ids = []
-    for reference in references:
-        tax_id = reference.split('|')[3]
-        if tax_id not in tax_ids:
-            tax_ids.append(tax_id)
-    return '<li>' + '</li><li>'.join(tax_ids) + '</li>'
-
-
 def _append_reference_array(coverage, line):
     """
     :param line: line in the sam file
@@ -153,9 +152,15 @@ def _append_reference_array(coverage, line):
     as the reference
     """
     line = line.split('\t')
-    reference = line[1].split(':')[1]
+    reference = line[1].split(':')[1].split('|')
+    tax_id = reference[3]
+    gi = reference[1]
     length = int(line[2].split(':')[1])
-    coverage[reference] = [0] * (length + 5)
+
+    if tax_id not in coverage.keys():
+        coverage[tax_id] = {}
+    coverage[tax_id][gi] = [0] * (length + 6)
+    coverage[tax_id][gi][5] = length
 
 
 def _set_hit_data(stats, table, coverage):
@@ -172,22 +177,22 @@ def _set_hit_data(stats, table, coverage):
     return coverage
 
 
-def _order_results(coverage, order_method, total_results):
+def _order_results(tax_id, order_method, total_results):
     """
     Sorts the list of gis by a given key and returns a certain number of gis
     """
-    references = list(coverage.keys())
+    references = list(tax_id.keys())
 
     if order_method == "ABSOLUTE_COVERAGE":
-        references.sort(key=lambda ref: coverage[ref][0], reverse=True)
+        references.sort(key=lambda ref: tax_id[ref][0], reverse=True)
     elif order_method == "RELATIVE_COVERAGE":
-        references.sort(key=lambda ref: coverage[ref][1], reverse=True)
+        references.sort(key=lambda ref: tax_id[ref][1], reverse=True)
     elif order_method == "TOTAL_HITS":
-        references.sort(key=lambda ref: coverage[ref][2], reverse=True)
+        references.sort(key=lambda ref: tax_id[ref][2], reverse=True)
     elif order_method == "INFORMATIVE_HITS":
-        references.sort(key=lambda ref: coverage[ref][3], reverse=True)
+        references.sort(key=lambda ref: tax_id[ref][3], reverse=True)
     elif order_method == "UNIQUE_HITS":
-        references.sort(key=lambda ref: coverage[ref][4], reverse=True)
+        references.sort(key=lambda ref: tax_id[ref][4], reverse=True)
 
     return references[:total_results]
 
@@ -200,39 +205,50 @@ def calculate_coverage_stats(coverage, bin_size):
     """
     for key in coverage.keys():
         gi = coverage[key]
+        sequence = gi[6:]
         # Calculate absolute coverage
         absolute_coverage = 0
-        averaged_coverage = []
-        for n, base in enumerate(gi[5:]):
+        averaged_coverage = [0]
+        for n, base in enumerate(sequence):
             if int(base) > 0:
                 absolute_coverage += 1
             averaged_coverage[-1] += int(base)
-            if n % bin_size == 0:
+            if n != 0 and n % bin_size == 0:
                 averaged_coverage[-1] /= bin_size
                 averaged_coverage.append(0)
+            if n % bin_size != 0 and n == len(sequence) - 1:
+                averaged_coverage[-1] /= n % bin_size
         # Set absolute coverage
         gi[0] = absolute_coverage
         # Calculate relative coverage
-        gi[1] = gi[0] / (len(gi) - 5)
-        coverage[key] = gi[:5] + averaged_coverage
+        gi[1] = gi[0] / (len(gi) - 6)
+        coverage[key] = gi[:6] + averaged_coverage
 
 
-def _generate_coverage_plot(reference, coverage_snippet, n, file_path):
+def _generate_coverage_plot(reference, n, file_path, bin_size, max_y):
     """
     Generates a matplotlib coverage plot and returns the HTML <img> tag with
     the plot as an image.
     """
     try:
+        sequence = reference[6:]
+        length = reference[5]
+
+        y_data = []
+        for base in sequence:
+            y_data += [base] * bin_size
+        y_data = y_data[:length]
+
         mpl.rcParams['patch.antialiased'] = True
         mpl.rcParams['xtick.labelsize'] = 'small'
         mpl.rcParams['ytick.labelsize'] = 'small'
 
         pyplot.figure(figsize=(7, 2.0), dpi=72, tight_layout=True)
         # the histogram of the data
-        pyplot.fill_between(range(len(reference) - 5), reference[5:],
+        pyplot.fill_between(range(length), y_data,
                             interpolate=True, color='blue')
-        pyplot.xlim(0, len(reference) - 5)
-        pyplot.ylim(ymin=0)
+        pyplot.xlim(0, length)
+        pyplot.ylim(0, max_y)
 
         # Axis and labels
         pyplot.xlabel('Sequence')
@@ -243,7 +259,11 @@ def _generate_coverage_plot(reference, coverage_snippet, n, file_path):
         # Save plot
         pyplot.savefig(file_path + '/coverage_' + str(n) + '.png')
 
-        return coverage_snippet.format(str(file_path) + 'coverage_' + str(n) +
-                                       '.png')
-    except Exception:
-        return None
+        return str(file_path) + '/coverage_' + str(n) + '.png'
+    except Exception as e:
+        return e
+
+
+_run_summary("", "", "/home/hayden/Desktop/bowtie/coverage/",
+             "ABSOLUTE_COVERAGE", 5, 500, "/home/hayden/Desktop/",
+             "/home/hayden/Desktop/", "/home/hayden/Desktop/bowtie/")
