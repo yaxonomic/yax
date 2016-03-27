@@ -48,6 +48,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
     # Get HTML templates
     file_path = os.path.dirname(os.path.realpath(__file__))
     template = ''.join(open(file_path + "/template.html", 'r').readlines())
+    css = file_path + "/style.css"
     tax_id_snippet = ''.join(open(file_path + "/tax_id_snippet.html", 'r')
                              .readlines())
     coverage_snippet = ''.join(open(file_path + "/coverage_snippet.html", 'r')
@@ -65,26 +66,29 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
         for i, key in enumerate(list(coverage.keys())):
 
             print('Calculating coverage data: tax id ' + str(i + 1) + '/' +
-              str(len(coverage.keys())))
+                  str(len(list(coverage.keys()))))
 
             tax_id = coverage[key]
-            # _set_hit_data(tax_id, summary_stats, summary_table)
+            _set_hit_data(tax_id, summary_stats, summary_table)
             calculate_coverage_stats(tax_id, bin_size)
             references = _order_results(tax_id, order_method, total_results)
 
+            table = _generate_table(references, tax_id)
+
             gi_data = ""
             for j, reference in enumerate(references):
-                coverage_plot = _generate_coverage_plot(tax_id[reference], i+j,
+                coverage_plot = _generate_coverage_plot(reference,
+                                                        tax_id[reference],
                                                         working_directory,
                                                         bin_size, max_coverage)
 
                 gi_data += coverage_snippet.format(coverage_plot)
-            template_data += tax_id_snippet.format(key, "Table goes here.",
-                                                   gi_data)
+
+            template_data += tax_id_snippet.format(key, table, gi_data)
 
         print('Writing output file.')
         writer = StringIO()
-        writer.write(template.format(n, template_data))
+        writer.write(template.format(css, n, template_data))
 
         # Write pdf to configurable output path
         pdfkit.from_string(writer.getvalue(), str(output_path) + "sample_" +
@@ -169,12 +173,17 @@ def _set_hit_data(stats, table, coverage):
     Uses summary stats and table to set the number of unique and informative
     hits for each reference.
     """
-    with open(stats, 'r') as stats_file:
-        stats_file.readlines()
+    try:
+        with open(stats, 'r') as stats_file:
+            stats_file.readlines()
+    except Exception:
+        return coverage
 
-    with open(table, 'r') as table_file:
-        table_file.readlines()
-    return coverage
+    try:
+        with open(table, 'r') as table_file:
+            table_file.readlines()
+    except Exception:
+        return coverage
 
 
 def _order_results(tax_id, order_method, total_results):
@@ -225,7 +234,34 @@ def calculate_coverage_stats(coverage, bin_size):
         coverage[key] = gi[:6] + averaged_coverage
 
 
-def _generate_coverage_plot(reference, n, file_path, bin_size, max_y):
+def _generate_table(references, coverage):
+    """
+    Generates a table where each row is a gi with coverage information.
+    """
+    table = "<table><tr><th>GI</th><th>Length</th><th>Absolute coverage</th>" \
+            "<th>Relative coverage</th><th>Average Coverage</th></tr>"
+    for reference in references:
+        sequence = coverage[reference]
+        table += "<tr>"
+        length = sequence[5]
+        abs_coverage = sequence[0]
+        rel_coverage = "%.4f" % sequence[1]
+        average_coverage = 0
+        for base in sequence[6:]:
+            average_coverage += base
+        average_coverage /= len(sequence[6:])
+        average_coverage = "%.4f" % average_coverage
+
+        table += "<td>" + "</td><td>".join([reference, str(length),
+                                            str(abs_coverage),
+                                            str(rel_coverage),
+                                            str(average_coverage)]) \
+                 + "</td></tr>"
+    table += "</table>"
+    return table
+
+
+def _generate_coverage_plot(gi, reference, file_path, bin_size, max_y):
     """
     Generates a matplotlib coverage plot and returns the HTML <img> tag with
     the plot as an image.
@@ -243,23 +279,21 @@ def _generate_coverage_plot(reference, n, file_path, bin_size, max_y):
         mpl.rcParams['xtick.labelsize'] = 'small'
         mpl.rcParams['ytick.labelsize'] = 'small'
 
-        pyplot.figure(figsize=(7, 2.0), dpi=72, tight_layout=True)
+        pyplot.figure(figsize=(7, 1.8), dpi=72, tight_layout=True)
         # the histogram of the data
-        pyplot.fill_between(range(length), y_data,
-                            interpolate=True, color='blue')
+        pyplot.fill_between(range(length), y_data, interpolate=True,
+                            color='blue')
         pyplot.xlim(0, length)
         pyplot.ylim(0, max_y)
 
         # Axis and labels
-        pyplot.xlabel('Sequence')
-        pyplot.ylabel('Depth')
-        pyplot.title('Coverage')
+        pyplot.title(gi)
         pyplot.grid(False)
 
         # Save plot
-        pyplot.savefig(file_path + '/coverage_' + str(n) + '.png')
+        pyplot.savefig(file_path + '/coverage_' + gi + '.png')
 
-        return str(file_path) + '/coverage_' + str(n) + '.png'
+        return str(file_path) + '/coverage_' + gi + '.png'
     except Exception as e:
         return e
 
