@@ -11,13 +11,14 @@ from yax.artifacts.gi_references import GiReferences
 from yax.state.type import Str
 
 
-def main(output: Alignments, reads: Reads, gi_references: GiReferences,
-         bowtie_options: Str):
-    return run_alignment(gi_references, reads, output, bowtie_options)
+def main(working_dir, output, reads: Reads, gi_references: GiReferences,
+         bowtie_options: Str) -> Alignments:
+    return run_alignment(gi_references, reads, output, bowtie_options,
+                         working_dir)
 
 
 def run_alignment(gi_references, sample_reads, output,
-                  bowtie_options):
+                  bowtie_options, working_dir):
     """
     :param gi_references: Location of gi references
     :param sample_reads: Location of reads trimmed by ReadPrep
@@ -25,7 +26,7 @@ def run_alignment(gi_references, sample_reads, output,
     :param bowtie_options: Optional bowtie parameters
     """
 
-    command = ["bowtie2-build", gi_references, "index"]
+    command = ["bowtie2-build", gi_references, working_dir + "/index"]
     try:
         # Build bowtie indexes
         subprocess.call(command)
@@ -35,7 +36,7 @@ def run_alignment(gi_references, sample_reads, output,
 
     for i, sample in enumerate(sample_reads):
         command = ["bowtie2-align"] + bowtie_options + \
-                  ["-x", "index", "-U", sample, "-S",
+                  ["-x", working_dir + "/index", "-U", sample, "-S",
                    str(output) + "sample_" + str(i) + "coverage.sam"]
         try:
             # Align sequences to references

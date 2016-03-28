@@ -18,10 +18,10 @@ from yax.artifacts.coverage_data import CoverageData
 from yax.state.type.parameter import Directory, Str, Int
 
 
-def main(working_directory: Directory, output: Summary,
-         summary_stats: SummaryStats, summary_table: SummaryTable,
-         coverage_data: CoverageData, order_method: Str, total_results: Int,
-         bin_size: Int, output_path: Directory):
+def main(working_directory, output, summary_stats: SummaryStats,
+         summary_table: SummaryTable, coverage_data: CoverageData,
+         order_method: Str, total_results: Int, bin_size: Int,
+         output_path: Directory) -> Summary:
     print('Running summary.')
     return _run_summary(summary_stats, summary_table, coverage_data,
                         order_method, total_results, bin_size,
