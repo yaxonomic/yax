@@ -12,13 +12,19 @@ class Artifact(Type):
     def is_complete(self):
         return os.isfile(self._get_complete_flag_path())
 
-    def __init__(self, dir_):
-        self.data_dir = dir_
-        if not self.is_complete:
-            self.setup()
+    @classmethod
+    def declare(cls, dir_, id_):
+        instance = cls.__new__()
+        instance.data_dir = dir_
+        instance.module_id = id_
+        instance.__init__(completed=instance.is_complete)
 
-    def setup(self):
+    def __init__(self, completed):
         pass
 
     def complete(self):
+        self.__complete__()
         os.utime(self._get_complete_flag_path(), None)
+
+    def __complete__(self):
+        pass
