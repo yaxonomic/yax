@@ -296,8 +296,3 @@ def _generate_coverage_plot(gi, reference, file_path, bin_size, max_y):
         return str(file_path) + '/coverage_' + gi + '.png'
     except Exception as e:
         return e
-
-
-_run_summary("", "", "/home/hayden/Desktop/bowtie/coverage/",
-             "ABSOLUTE_COVERAGE", 5, 500, "/home/hayden/Desktop/",
-             "/home/hayden/Desktop/", "/home/hayden/Desktop/bowtie/")
