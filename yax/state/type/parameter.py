@@ -3,7 +3,6 @@ import os.path
 
 
 class Parameter(Type):
-
     def from_string(self, string):
         return string
 
@@ -16,13 +15,11 @@ class Parameter(Type):
 
 
 class Int(Parameter):
-
     def from_string(self, string):
         return int(string)
 
 
 class Float(Parameter):
-
     def from_string(self, string):
         return float(string)
 

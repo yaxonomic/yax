@@ -1,3 +1,5 @@
+import collections
+
 from yax.state.type import Artifact
 from yax.state.type.parameter import Parameter
 
@@ -8,34 +10,65 @@ class ExeNode:
         self.module = module
         self._annotations = self.module.__annotations__.copy()
 
-        if 'output' not in self._annotations:
-            raise TypeError("Must include `output` as a parameter for a "
-                            "module's main function.")
-
     def __repr__(self):
-        return ("%s \n\tArtifacts: %r\n\tParams: %r\n\tOut: %r"
-                % (self.name, self._get_input_artifacts(),
-                   self._get_input_params(),
-                   self._get_output_artifacts()))
+        return "NODE<%r>" % self.name
+        # return ("%s \n\tArtifacts: %r\n\tParams: %r\n\tOut: %r"
+        #         % (self.name, self.get_input_artifacts(),
+        #            self.get_input_params(),
+        #            self.get_output_artifacts()))
 
-    def _get_input_params(self):
+    def get_input_params(self):
         return {k: v for k, v in self._annotations.items()
-                if not k == 'output' and issubclass(v, Parameter)}
+                if issubclass(v, Parameter)}
 
-    def _get_input_artifacts(self):
+    def get_input_artifacts(self):
         return {k: v for k, v in self._annotations.items()
-                if not k == 'output' and issubclass(v, Artifact)}
+                if issubclass(v, Artifact)}
 
-    def _get_output_artifacts(self):
-        return self._annotations['output']
+    def get_output_artifacts(self):
+        return self._annotations['return']
 
 
 class ExeGraph:
     def __init__(self):
-        self.nodes = []
+        self.edges_from_node = collections.OrderedDict()
+        self.nodes_from_edge = collections.OrderedDict()
 
-    def append(self, exe_node):
-        self.nodes.append(exe_node)
+    def add(self, exe_node, requires=(), returns=()):
+        for edge in requires:
+            if edge not in self.nodes_from_edge:
+                self.nodes_from_edge[edge] = []
+            self.nodes_from_edge[edge].append(exe_node)
+
+        self.edges_from_node[exe_node] = list(returns)
+
+    @property
+    def adjacency_matrix(self):
+        graph = collections.OrderedDict(
+            (node, []) for node in self.edges_from_node)
+
+        for node, next_nodes in graph.items():
+            for edge in self.edges_from_node[node]:
+
+                if edge in self.nodes_from_edge:
+                    for decendant in self.nodes_from_edge[edge]:
+
+                        if decendant not in next_nodes:
+                            next_nodes.append(decendant)
+        return graph
+
 
     def __iter__(self):
-        return iter(self.nodes)
+        elements = []
+
+        starts = []
+        for ret_node in self.rets.values():
+            if ret_node not in self.reqs:
+                starts.append(ret_node)
+
+        while starts:
+            _, node, rets = starts.pop()
+            elements.append(node)
+            for ret in rets:
+                requires, next_node, returns = self.rets[ret]
+                # if not (set(requires) - set([ret])):

@@ -1,16 +1,37 @@
 #!/usr/bin/env python
 import click
 from yax.state.jones import Indiana
+from yax.arch_config import pipeline
 
 @click.group()
 def cli():
     pass
 
+@cli.command("inspect", help='View current study branches.')
+def inspect():
+    pass
+
+@cli.command("remove", help='Remove a study branch.')
+def remove():
+    pass
+
+@cli.command("init", help='Create a yax study and config.')
+def init():
+    pass
+
+@cli.command("prep", help='Validate configuration.')
+def prep():
+    pass
+
+@cli.command("engage", help='Start the pipeline.')
+def engage():
+    pass
 
 @cli.command("info", help='This is the worst command. DO NOT USE.')
 def info():
     indiana = Indiana()
     click.echo(repr(indiana))
+    indiana.init_config('./example_config.ini')
 
 if __name__ == "__main__":
     cli()

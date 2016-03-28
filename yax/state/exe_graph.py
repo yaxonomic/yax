@@ -1,3 +1,0 @@
-
-class ExeGraph:
-    pass
