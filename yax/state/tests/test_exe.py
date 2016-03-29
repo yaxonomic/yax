@@ -58,7 +58,7 @@ class TestAdjacencyMatrix(unittest.TestCase):
         graph.add(n2, requires=('a'), returns=('c'))
         graph.add(n3, requires=('b'), returns=('d'))
         graph.add(n4, requires=('c', 'd'), returns=('e'))
-
+        print(list(graph))
         self.assertEqual(expected, graph.adjacency_matrix)
 
 

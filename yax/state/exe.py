@@ -6,6 +6,8 @@ from yax.state.type.parameter import Parameter
 
 class ExeNode:
     def __init__(self, name, module):
+        self.ancestors = []
+        self.decendants = []
         self.name = name
         self.module = module
         self._annotations = self.module.__annotations__.copy()
@@ -31,44 +33,52 @@ class ExeNode:
 
 class ExeGraph:
     def __init__(self):
-        self.edges_from_node = collections.OrderedDict()
-        self.nodes_from_edge = collections.OrderedDict()
+        self.output_from_node = collections.OrderedDict()
+        self.nodes_from_input = collections.OrderedDict()
+        self.start_nodes = []
+        self.final_nodes = []
 
     def add(self, exe_node, requires=(), returns=()):
+        if not requires:
+            self.start_nodes.append(exe_node)
         for edge in requires:
-            if edge not in self.nodes_from_edge:
-                self.nodes_from_edge[edge] = []
-            self.nodes_from_edge[edge].append(exe_node)
+            if edge not in self.nodes_from_input:
+                self.nodes_from_input[edge] = []
+            self.nodes_from_input[edge].append(exe_node)
 
-        self.edges_from_node[exe_node] = list(returns)
+        self.output_from_node[exe_node] = list(returns)
 
     @property
     def adjacency_matrix(self):
         graph = collections.OrderedDict(
-            (node, []) for node in self.edges_from_node)
+            (node, []) for node in self.output_from_node)
 
         for node, next_nodes in graph.items():
-            for edge in self.edges_from_node[node]:
+            for edge in self.output_from_node[node]:
 
-                if edge in self.nodes_from_edge:
-                    for decendant in self.nodes_from_edge[edge]:
+                if edge in self.nodes_from_input:
+                    for decendant in self.nodes_from_input[edge]:
 
                         if decendant not in next_nodes:
                             next_nodes.append(decendant)
         return graph
 
-
     def __iter__(self):
         elements = []
+        graph = self.adjacency_matrix
 
-        starts = []
-        for ret_node in self.rets.values():
-            if ret_node not in self.reqs:
-                starts.append(ret_node)
+        starts = list(self.start_nodes)
 
         while starts:
-            _, node, rets = starts.pop()
-            elements.append(node)
-            for ret in rets:
-                requires, next_node, returns = self.rets[ret]
-                # if not (set(requires) - set([ret])):
+            node_n = starts.pop()
+            yield node_n
+
+            edges = graph[node_n]
+            while edges:
+                node_m = edges.pop()
+                should_insert = True
+                for out_degree in graph.values():
+                    if node_m in out_degree:
+                        should_insert = False
+                if should_insert:
+                    starts.append(node_m)
