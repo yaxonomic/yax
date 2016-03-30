@@ -1,6 +1,8 @@
 import os.path
 import sqlite3
 
+from yax.state.type import Int, Str, Float, File, Directory
+
 
 class ArtifactMap:
     def __init__(self, db_fp, exe_graph):
@@ -12,5 +14,57 @@ class ArtifactMap:
         if not db_exists:
             self._init_database()
 
-    def _init_database(self):
+    def get_artifact(self, artifact_name, params):
         pass
+
+    def _init_database(self):
+        c = self.conn.cursor()
+        c.execute('''
+        CREATE TABLE Run (
+            %s
+        )
+        ''' % self._get_run_cols([
+            ('id', 'INTEGER', 'PRIMARY KEY', 'NOT NULL'),
+            ('name', 'TEXT', '', 'NOT NULL')
+        ]))
+
+        c.execute('''
+        CREATE TABLE Artifact_Run (
+            artifact_id    INTEGER    NOT NULL,
+            run_id         INTEGER    NOT NULL
+        )
+        ''')
+
+        c.execute('''
+        CREATE TABLE Artifact (
+            id      INTEGER     PRIMARY KEY    NOT NULL,
+            name    TEXT                       NOT NULL,
+            path    TEXT                       NOT NULL
+        )
+        ''')
+
+        self.conn.commit()
+
+    def _get_run_cols(self, columns):
+        for node in self.graph:
+            for param, param_type in node.get_input_params().items():
+                field_name = "%s_%s" % (node.name, param)
+                field_type = self._translate_param_to_type(param_type)
+                columns.append((field_name, field_type, '', "NOT NULL"))
+        return ",\n            ".join(self._pretty_format_columns(columns))
+
+    def _translate_param_to_type(self, param_type):
+        return {
+            Int: 'INTEGER',
+            Str: 'TEXT',
+            Float: 'REAL',
+            File: 'TEXT',
+            Directory: 'TEXT'
+        }[param_type]
+
+    def _pretty_format_columns(self, columns):
+        new_cols = []
+        for def_cols in zip(*columns):
+            max_len = max(map(len, def_cols))
+            new_cols.append([c + (" " * (max_len - len(c))) for c in def_cols])
+        return ['    '.join(column).rstrip() for column in zip(*new_cols)]
