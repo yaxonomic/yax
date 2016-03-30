@@ -22,7 +22,7 @@ class ExeNode:
 
     def get_input_artifacts(self):
         return {k: v for k, v in self._annotations.items()
-                if k != 'return' and  issubclass(v, Artifact)}
+                if k != 'return' and issubclass(v, Artifact)}
 
     def get_output_artifacts(self):
         return self._annotations['return']
@@ -69,7 +69,6 @@ class ExeGraph:
         return graph
 
     def __iter__(self):
-        elements = []
         graph = self.adjacency_matrix
 
         starts = list(self.start_nodes)

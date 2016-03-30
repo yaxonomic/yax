@@ -5,6 +5,7 @@ import shutil
 from yax.state.exe import ExeGraph
 from yax.state.artifact_map import ArtifactMap
 
+
 class Indiana:
     DATA_DIR_NAME = '.yax'
     ARCH_CONFIG_NAME = 'arch_config.py'
@@ -44,7 +45,7 @@ class Indiana:
             os.mkdir(os.path.join(self.data_dir, 'working'))
             shutil.copyfile(pipeline, self.arch_path)
         except Exception:
-            shutil.rmtree(data_dir)
+            shutil.rmtree(self.data_dir)
             raise
 
     def _get_default_pipeline(self):

@@ -4,11 +4,12 @@ import collections
 from yax.state.exe import ExeGraph, ExeNode
 from yax.state.type import Artifact
 
+
 def function(working_dir, output) -> Artifact:
     pass
 
-class TestAdjacencyMatrix(unittest.TestCase):
 
+class TestAdjacencyMatrix(unittest.TestCase):
     def test_empty(self):
         graph = ExeGraph()
         self.assertEqual(collections.OrderedDict(), graph.adjacency_matrix)

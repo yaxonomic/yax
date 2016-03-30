@@ -1,6 +1,7 @@
 import os.path
 import sqlite3
 
+
 class ArtifactMap:
     def __init__(self, db_fp, exe_graph):
         db_exists = os.path.isfile(db_fp)
