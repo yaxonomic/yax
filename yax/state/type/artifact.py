@@ -4,6 +4,7 @@ import os
 
 
 class Artifact(Type):
+    final_user_output = False
 
     def _get_complete_flag_path(self):
         os.path.join(self.data_dir, '.complete')
