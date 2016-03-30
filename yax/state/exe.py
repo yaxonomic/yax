@@ -1,4 +1,5 @@
 import collections
+import importlib.util
 
 from yax.state.type import Artifact
 from yax.state.type.parameter import Parameter
@@ -13,25 +14,29 @@ class ExeNode:
         self._annotations = self.module.__annotations__.copy()
 
     def __repr__(self):
-        return "NODE<%r>" % self.name
-        # return ("%s \n\tArtifacts: %r\n\tParams: %r\n\tOut: %r"
-        #         % (self.name, self.get_input_artifacts(),
-        #            self.get_input_params(),
-        #            self.get_output_artifacts()))
+        return "<ExeNode: %r at 0x%x>" % (self.name, id(self))
 
     def get_input_params(self):
         return {k: v for k, v in self._annotations.items()
-                if issubclass(v, Parameter)}
+                if k != 'return' and issubclass(v, Parameter)}
 
     def get_input_artifacts(self):
         return {k: v for k, v in self._annotations.items()
-                if issubclass(v, Artifact)}
+                if k != 'return' and  issubclass(v, Artifact)}
 
     def get_output_artifacts(self):
         return self._annotations['return']
 
 
 class ExeGraph:
+    @classmethod
+    def from_config(cls, fp):
+        # TODO: understand this better
+        spec = importlib.util.spec_from_file_location("arch_config", fp)
+        arch_config = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(arch_config)
+        return arch_config.pipeline
+
     def __init__(self):
         self.output_from_node = collections.OrderedDict()
         self.nodes_from_input = collections.OrderedDict()

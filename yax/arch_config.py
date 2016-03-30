@@ -6,9 +6,3 @@ pipeline = ExeGraph()
 
 pipeline.add(ExeNode('example', example_main),
              requires=(), returns=('a', 'b'))
-
-pipeline.add(ExeNode('other', other_main),
-             requires=('a'), returns=('x'))
-
- pipeline.add(ExeNode('foo', other_main),
-              requires=('b', 'x'), returns=('z'))

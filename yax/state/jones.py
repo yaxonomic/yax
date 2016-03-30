@@ -1,51 +1,80 @@
 import configparser
 import os
+import shutil
 
-from yax.arch_config import pipeline
-from yax.state.exe import ExeGraph, ExeNode
-
+from yax.state.exe import ExeGraph
+from yax.state.artifact_map import ArtifactMap
 
 class Indiana:
-    data_dir = '.yax'
+    DATA_DIR_NAME = '.yax'
+    ARCH_CONFIG_NAME = 'arch_config.py'
+    ARTIFACT_DATABASE_NAME = 'artifacts.db'
 
-    @classmethod
-    def get_data_path(cls, dir_):
-        return os.path.join(dir_, cls._data_dir)
+    @property
+    def data_dir(self):
+        return os.path.join(self.root_dir, self.DATA_DIR_NAME)
 
-    @classmethod
-    def prepare(cls, dir_, pipeline=pipeline):
-        if not os.path.isdir():
-            os.mkdir(self.data_path)
+    @property
+    def arch_path(self):
+        return os.path.join(self.data_dir, self.ARCH_CONFIG_NAME)
 
-    def __init__(self, dir_):
-        self.graph = ExeGraph()
-        for name, main in pipeline:
-            node = ExeNode(name, main)
-            self.graph.append(node)
+    @property
+    def artifact_db_path(self):
+        return os.path.join(self.data_dir, self.ARTIFACT_DATABASE_NAME)
+
+    def __init__(self, dir_, pipeline=None):
+        self.root_dir = dir_
+        if not os.path.isdir(self.data_dir):
+            self._init_first_time(pipeline)
+        elif pipeline is not None:
+            raise ValueError("'pipeline' was provided to an already"
+                             " initialized yax pipeline.")
+
+        self.graph = ExeGraph.from_config(self.arch_path)
+        self.map = ArtifactMap(self.artifact_db_path, self.graph)
+
+    def _init_first_time(self, pipeline):
+        if pipeline is None:
+            pipeline = self._get_default_pipeline()
+        else:
+            pipeline = os.path.abspath(pipeline)
+        try:
+            os.mkdir(self.data_dir)
+            os.mkdir(os.path.join(self.data_dir, 'artifacts'))
+            os.mkdir(os.path.join(self.data_dir, 'working'))
+            shutil.copyfile(pipeline, self.arch_path)
+        except Exception:
+            shutil.rmtree(data_dir)
+            raise
+
+    def _get_default_pipeline(self):
+        root, _ = os.path.split(os.path.split(__file__)[0])
+        # This is the arch_config module of YAX not ARCH_CONFIG_NAME
+        # DRY does not apply here.
+        return os.path.join(root, 'arch_config.py')
 
     def __repr__(self):
         return '\n'.join([repr(node) for node in self.graph])
 
-    @property
-    def is_initialized(self):
-        return os.path.isdir(self.data_path)
+    def init(self, run_key):
+        self.write_config(run_key)
 
+    def prepare(self, config):
+        raise NotImplementedError("To be done.")
 
-    def init(self, fp):
-        init_config(self, os.path.join(self.dir_, 'config_%s.ini' % run_name),
-                    run)
+    def engage(self, config):
+        self.prepare(self, config)
+        raise NotImplementedError("To be done.")
 
-    def prepare(self, fp):
-        pass
+    def read_config(self, fp):
+        raise NotImplementedError("To be done.")
 
-    def engage(self, fp):
-        self.prepare(self, fp)
-
-    def init_config(self, fp, run_name):
+    def write_config(self, run_key):
+        fp = os.path.join(self.root_dir, '%s.ini' % run_key)
         config = configparser.ConfigParser()
 
         config['GLOBAL'] = {
-            'project_name': self.run_name
+            'run_key': run_key
         }
 
         for node in self.graph:
@@ -53,6 +82,3 @@ class Indiana:
 
         with open(fp, mode='w') as fh:
             config.write(fh)
-
-    def read_config(self, fp):
-        pass
