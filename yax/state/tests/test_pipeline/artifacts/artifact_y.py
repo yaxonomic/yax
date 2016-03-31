@@ -3,7 +3,7 @@ from state.type import Artifact
 
 class ArtifactY(Artifact):
     final_user_output = True
-    
+
     def __init__(self, completed):
         self.text = None
         self.number_float = None
