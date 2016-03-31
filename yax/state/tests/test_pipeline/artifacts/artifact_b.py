@@ -14,4 +14,4 @@ class ArtifactB(Artifact):
 
     def __complete__(self):
         with open("".join([self.data_dir, "artifact_b.txt"]), 'w') as fh:
-            fh.write("\n".join([self.module_id, self.number_int]))
+            fh.write("\n".join([self.module_id, str(self.number_int)]))

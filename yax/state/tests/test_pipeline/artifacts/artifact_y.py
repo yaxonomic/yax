@@ -8,6 +8,7 @@ class ArtifactY(Artifact):
         self.text = None
         self.number_float = None
         self.number_int = None
+        self.boolean_val = None
 
         if completed:
             self.read_text()
@@ -27,4 +28,5 @@ class ArtifactY(Artifact):
     def __complete__(self):
         with open("".join([self.data_dir, "artifact_b.txt"]), 'w') as fh:
             fh.write("\n".join([self.module_id, self.text * self.number_int,
-                                self.number_float]))
+                                str(self.number_float),
+                                str(self.boolean_val)]))
