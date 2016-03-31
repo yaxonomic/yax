@@ -8,6 +8,7 @@ order this list of Gis.
 import pdfkit
 import matplotlib as mpl
 import matplotlib.pyplot as pyplot
+from ete3 import NCBITaxa
 import os
 import os.path
 from io import StringIO
@@ -72,7 +73,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
             _set_hit_data(tax_id, summary_stats, summary_table)
             calculate_coverage_stats(tax_id, bin_size)
             references = _order_results(tax_id, order_method, total_results)
-
+            name = NCBITaxa().get_taxid_translator([references[0]])
             table = _generate_table(references, tax_id)
 
             gi_data = ""
@@ -84,7 +85,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
 
                 gi_data += coverage_snippet.format(coverage_plot)
 
-            template_data += tax_id_snippet.format(key, table, gi_data)
+            template_data += tax_id_snippet.format(key, name, table, gi_data)
 
         print('Writing output file.')
         writer = StringIO()
@@ -296,3 +297,8 @@ def _generate_coverage_plot(gi, reference, file_path, bin_size, max_y):
         return str(file_path) + '/coverage_' + gi + '.png'
     except Exception as e:
         return e
+
+
+_run_summary("", "", "/home/hayden/Desktop/bowtie/coverage/",
+             "ABSOLUTE_COVERAGE", 5, 100, "/home/hayden/Desktop/",
+             "/home/hayden/Desktop/", "/home/hayden/Desktop/")
