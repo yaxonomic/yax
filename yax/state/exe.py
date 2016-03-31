@@ -1,5 +1,6 @@
 import collections
 import importlib.util
+import inspect
 
 from yax.state.type import Artifact
 from yax.state.type.parameter import Parameter
@@ -11,6 +12,7 @@ class ExeNode:
         self.output_map = output
         self.name = name
         self.module = module
+        self.defaults = {}
         self._annotations = self.module.__annotations__.copy()
 
         for key, value in input.items():
@@ -21,6 +23,10 @@ class ExeNode:
         if len(output) != len(self.get_output_artifacts()):
             raise TypeError("Number of pipeline artifact outputs does not"
                             " match the number returned in module %r" % name)
+
+        for param in inspect.signature(module).parameters.values():
+            if param.default != param.empty:
+                self.defaults[param.name] = param.default
 
     def __repr__(self):
         return "<ExeNode: %r at 0x%x>" % (self.name, id(self))

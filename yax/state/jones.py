@@ -79,7 +79,13 @@ class Indiana:
         }
 
         for node in self.graph:
-            config[node.name] = {key: '' for key in node.get_input_params()}
+            section = {}
+            for key in node.get_input_params():
+                default = ''
+                if key in node.defaults:
+                    default = node.defaults[key]
+                section[key] = default
+            config[node.name] = section
 
         with open(fp, mode='w') as fh:
             config.write(fh)
