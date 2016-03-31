@@ -1,7 +1,7 @@
-from ..artifacts.artifact_a import ArtifactA
-from ..artifacts.artifact_d import ArtifactD
-from ..artifacts.artifact_y import ArtifactY
-from state.type.parameter import Directory
+from yax.state.tests.test_pipeline.artifacts.artifact_a import ArtifactA
+from yax.state.tests.test_pipeline.artifacts.artifact_d import ArtifactD
+from yax.state.tests.test_pipeline.artifacts.artifact_y import ArtifactY
+from yax.state.type import Directory
 
 
 def main(working_dir, output, art_a: ArtifactA, art_d: ArtifactD,

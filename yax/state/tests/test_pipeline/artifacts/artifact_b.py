@@ -1,4 +1,4 @@
-from state.type import Artifact
+from yax.state.type import Artifact
 
 
 class ArtifactB(Artifact):

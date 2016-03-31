@@ -1,7 +1,7 @@
-from ..artifacts.artifact_b import ArtifactB
-from ..artifacts.artifact_c import ArtifactC
-from ..artifacts.artifact_d import ArtifactD
-from state.type.parameter import File
+from yax.state.tests.test_pipeline.artifacts.artifact_b import ArtifactB
+from yax.state.tests.test_pipeline.artifacts.artifact_c import ArtifactC
+from yax.state.tests.test_pipeline.artifacts.artifact_d import ArtifactD
+from yax.state.type.parameter import File
 
 
 def main(working_dir, output, art_b: ArtifactB, art_c: ArtifactC,

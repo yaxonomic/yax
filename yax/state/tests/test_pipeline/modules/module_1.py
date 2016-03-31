@@ -1,6 +1,6 @@
-from ..artifacts.artifact_a import ArtifactA
-from ..artifacts.artifact_b import ArtifactB
-from state.type.parameter import Float, Int
+from yax.state.tests.test_pipeline.artifacts.artifact_a import ArtifactA
+from yax.state.tests.test_pipeline.artifacts.artifact_b import ArtifactB
+from yax.state.type.parameter import Float, Int
 
 
 def main(working_dir, output, input_float: Float, input_int: Int)\
