@@ -1,16 +1,55 @@
 #!/usr/bin/env python
+import os
+
 import click
+
 from yax.state.jones import Indiana
 
 @click.group()
 def cli():
     pass
 
+def run_configuartion_option():
+    return click.option('-c', '--config', required=True)
 
-@cli.command("info", help='This is the worst command. DO NOT USE.')
-def info():
-    indiana = Indiana()
-    click.echo(repr(indiana))
+@cli.command("inspect", help='View current study branches.')
+def inspect():
+    raise NotImplementedError("To be done.")
+
+@cli.command("remove", help='Remove a study branch.')
+def remove():
+    raise NotImplementedError("To be done.")
+
+@cli.command("export", help='Export an artifact.')
+def export():
+    raise NotImplementedError("To be done.")
+
+@cli.command("import", help='Import an artifact.')
+def import_():
+    raise NotImplementedError("To be done.")
+
+@cli.command("status", help='View run statuses.')
+def status():
+    raise NotImplementedError("To be done.")
+
+@cli.command("init", help='Create a yax pipeline/config.')
+@click.option('-p', '--pipeline', default=None)
+@click.option('-r', '--run-key', default=None)
+def init(pipeline, run_key):
+    indiana = Indiana(os.getcwd(), pipeline=pipeline)
+    if run_key is not None:
+        indiana.init(run_key)
+
+@cli.command("prep", help='Prepare a run.')
+@run_configuartion_option()
+def prep(config):
+    raise NotImplementedError("To be done.")
+
+@cli.command("engage", help='Start a run.')
+@run_configuartion_option()
+def engage(config):
+    raise NotImplementedError("To be done.")
+
 
 if __name__ == "__main__":
     cli()
