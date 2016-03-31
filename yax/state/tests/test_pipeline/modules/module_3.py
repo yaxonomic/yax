@@ -17,4 +17,4 @@ def main(working_dir, output, art_b: ArtifactB, art_c: ArtifactC,
     with open("".join([working_dir, "module_2.txt"]), 'w') as fh:
         fh.write("module_2")
 
-    art_d.complete()
+    return output

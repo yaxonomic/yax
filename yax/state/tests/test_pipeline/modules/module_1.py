@@ -13,6 +13,4 @@ def main(working_dir, output, input_float: Float, input_int: Int)\
     with open("".join([working_dir, "module_1.txt"]), 'w') as fh:
         fh.write("module_1")
 
-    art_a.complete()
-    art_b.complete()
-
+    return output
