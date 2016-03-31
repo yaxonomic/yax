@@ -11,7 +11,7 @@ class Artifact(Type):
 
     @property
     def is_complete(self):
-        return os.isfile(self._get_complete_flag_path())
+        return os.path.isfile(self._get_complete_flag_path())
 
     @classmethod
     def declare(cls, dir_, id_):
