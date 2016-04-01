@@ -8,7 +8,6 @@ order this list of Gis.
 import pdfkit
 import matplotlib as mpl
 import matplotlib.pyplot as pyplot
-from ete3 import NCBITaxa
 import os
 import os.path
 from io import StringIO
@@ -69,23 +68,28 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
             print('Calculating coverage data: tax id ' + str(i + 1) + '/' +
                   str(len(list(coverage.keys()))))
 
-            tax_id = coverage[key]
+            taxid_coverage = coverage[key]
+
+            tax_id = key.split('|')[0]
+            name = key.split('|')[1]
             _set_hit_data(tax_id, summary_stats, summary_table)
-            calculate_coverage_stats(tax_id, bin_size)
-            references = _order_results(tax_id, order_method, total_results)
-            name = NCBITaxa().get_taxid_translator([references[0]])
-            table = _generate_table(references, tax_id)
+            calculate_coverage_stats(taxid_coverage)
+            references = _order_results(taxid_coverage, order_method,
+                                        total_results)
+            table = _generate_table(references, taxid_coverage)
 
             gi_data = ""
             for j, reference in enumerate(references):
-                coverage_plot = _generate_coverage_plot(reference,
-                                                        tax_id[reference],
+                coverage_plot = _generate_coverage_plot(reference, n,
+                                                        taxid_coverage
+                                                        [reference],
                                                         working_directory,
                                                         bin_size, max_coverage)
 
                 gi_data += coverage_snippet.format(coverage_plot)
 
-            template_data += tax_id_snippet.format(key, name, table, gi_data)
+            template_data += tax_id_snippet.format(tax_id, name, table,
+                                                   gi_data)
 
         print('Writing output file.')
         writer = StringIO()
@@ -104,7 +108,8 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
 def _parse_summary_data(coverage_data):
     """
     Parse sam files and build a dictionary of taxids that, for each taxid,
-    stores a list of gis and coverage values for those gis.
+    stores a dictionary with gis as keys and a list of coverage values as
+    values.
     """
     with open(coverage_data, 'r') as sam_file:
         sam_lines = sam_file.readlines()
@@ -120,9 +125,11 @@ def _parse_summary_data(coverage_data):
                 continue
             current_line = line.split('\t')
 
-            reference = current_line[2].split('|')
-            tax_id = reference[3]
-            gi = reference[1]
+            gi = current_line[2].split('|')[1]
+            tax_id = '|'.join(_get_taxid_and_name(gi))
+
+            if tax_id not in coverage:
+                continue
 
             position = int(current_line[3])
             length = int(len(current_line[9]))
@@ -134,6 +141,7 @@ def _parse_summary_data(coverage_data):
 
         except Exception:
             continue
+
     return coverage, max_coverage
 
 
@@ -157,9 +165,8 @@ def _append_reference_array(coverage, line):
     as the reference
     """
     line = line.split('\t')
-    reference = line[1].split(':')[1].split('|')
-    tax_id = reference[3]
-    gi = reference[1]
+    gi = line[1].split('|')[1]
+    tax_id = '|'.join(_get_taxid_and_name(gi))
     length = int(line[2].split(':')[1])
 
     if tax_id not in coverage.keys():
@@ -207,7 +214,7 @@ def _order_results(tax_id, order_method, total_results):
     return references[:total_results]
 
 
-def calculate_coverage_stats(coverage, bin_size):
+def calculate_coverage_stats(coverage):
     """
     For each gi, counts of number of bases in the sequence that are covered by
      at least one read to calculate the absolute coverage. Divides this amount
@@ -218,21 +225,13 @@ def calculate_coverage_stats(coverage, bin_size):
         sequence = gi[6:]
         # Calculate absolute coverage
         absolute_coverage = 0
-        averaged_coverage = [0]
         for n, base in enumerate(sequence):
             if int(base) > 0:
                 absolute_coverage += 1
-            averaged_coverage[-1] += int(base)
-            if n != 0 and n % bin_size == 0:
-                averaged_coverage[-1] /= bin_size
-                averaged_coverage.append(0)
-            if n % bin_size != 0 and n == len(sequence) - 1:
-                averaged_coverage[-1] /= n % bin_size
         # Set absolute coverage
         gi[0] = absolute_coverage
         # Calculate relative coverage
         gi[1] = gi[0] / (len(gi) - 6)
-        coverage[key] = gi[:6] + averaged_coverage
 
 
 def _generate_table(references, coverage):
@@ -250,7 +249,7 @@ def _generate_table(references, coverage):
         average_coverage = 0
         for base in sequence[6:]:
             average_coverage += base
-        average_coverage /= len(sequence[6:])
+        average_coverage /= length
         average_coverage = "%.4f" % average_coverage
 
         table += "<td>" + "</td><td>".join([reference, str(length),
@@ -262,7 +261,8 @@ def _generate_table(references, coverage):
     return table
 
 
-def _generate_coverage_plot(gi, reference, file_path, bin_size, max_y):
+def _generate_coverage_plot(gi, sample_id, reference, file_path, bin_size,
+                            max_y):
     """
     Generates a matplotlib coverage plot and returns the HTML <img> tag with
     the plot as an image.
@@ -271,34 +271,67 @@ def _generate_coverage_plot(gi, reference, file_path, bin_size, max_y):
         sequence = reference[6:]
         length = reference[5]
 
-        y_data = []
-        for base in sequence:
-            y_data += [base] * bin_size
-        y_data = y_data[:length]
+        # Average data across bins
+        binned_data = _bin_sequence(sequence, bin_size)
 
+        # Visual parameters
         mpl.rcParams['patch.antialiased'] = True
         mpl.rcParams['xtick.labelsize'] = 'small'
         mpl.rcParams['ytick.labelsize'] = 'small'
 
+        # Figure size
         pyplot.figure(figsize=(8, 2.057), dpi=72, tight_layout=True)
-        # the histogram of the data
-        pyplot.fill_between(range(length), y_data, interpolate=True,
-                            color='#409AB8')
+
+        # plot of the data
+        pyplot.plot(range(length), binned_data, '-', color="#000000")
+        pyplot.grid(True)
+
+        # Axis ranges
         pyplot.xlim(0, length)
         pyplot.ylim(0, max_y)
 
         # Axis and labels
         pyplot.title(gi)
-        pyplot.grid(False)
 
         # Save plot
-        pyplot.savefig(file_path + '/coverage_' + gi + '.png')
+        pyplot.savefig(file_path + '/coverage_' + str(gi) + '_' +
+                       str(sample_id) + '.png')
 
-        return str(file_path) + '/coverage_' + gi + '.png'
+        return str(file_path) + '/coverage_' + str(gi) + '_' + str(sample_id) \
+            + '.png'
     except Exception as e:
+        print(e)
         return e
 
 
+def _bin_sequence(sequence, bin_size):
+    binned_data = [0] * len(sequence)
+    average = 0
+    bin_start = 0
+    mid_bin = False
+    for n, base in enumerate(sequence):
+        mid_bin = True
+        if n > 0 and n % bin_size == 0:
+            mid_bin = False
+            average /= n - bin_start
+            binned_data[bin_start: n] = [average] * (n - bin_start)
+            average = 0
+            bin_start = n
+        average += base
+    if mid_bin:
+        average /= len(sequence) - bin_start
+        binned_data[bin_start:] = [average] * (len(sequence) - bin_start)
+    return binned_data
+
+
+def _get_taxid_and_name(gi):
+    """
+    Returns the tax id and scientific organism name as a tuple of the given gi.
+    Uses the TaxID Branch clipper tool.
+    """
+    return 'Organism name', gi
+
+
 _run_summary("", "", "/home/hayden/Desktop/bowtie/coverage/",
-             "ABSOLUTE_COVERAGE", 5, 100, "/home/hayden/Desktop/",
+             "ABSOLUTE_COVERAGE", 5, 50, "/home/hayden/Desktop/",
              "/home/hayden/Desktop/", "/home/hayden/Desktop/")
