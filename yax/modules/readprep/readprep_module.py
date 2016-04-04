@@ -1,17 +1,15 @@
 from yax.state.tests.test_pipeline.artifacts.prepared_reads import\
-                                                            PreparedReads
+    PreparedReads
 from yax.state.type.parameter import Int, Str, File
 import subprocess
 import configparser
 
 
 def main(working_dir, output, path_to_readprep_main: File, infile_list: File,
-         num_workers: Int,
-         max_mem_target_gb: Int, trimming_type: Str,
+         num_workers: Int, max_mem_target_gb: Int, trimming_type: Str,
          trimming_segment_length: Int, adapter_list: File="optional",
          adapter_tolerance: Int="optional", minimum_quality: Int="optional",
-         max_below_threshold: Int="optional")\
-        -> (PreparedReads):
+         max_below_threshold: Int="optional") -> (PreparedReads):
 
     prepared_reads, = output
 
@@ -28,7 +26,7 @@ def main(working_dir, output, path_to_readprep_main: File, infile_list: File,
     prepared_reads.max_below_threshold = max_below_threshold
 
     path_to_config_file = "/".join([working_dir, "/", "runid",
-                            "readprep_config.ini"])
+                                    "readprep_config.ini"])
     write_readprep_config()
     run_readprep()
 
