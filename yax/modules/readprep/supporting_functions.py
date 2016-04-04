@@ -14,6 +14,4 @@ def read_fasta_file(fasta_file_path):
             seq += line.rstrip("\n")
     fasta_seqs.append(seq)
 
-    fasta_seqs = remove_illegal_characters(fasta_seqs)
-
     return fasta_headers, fasta_seqs

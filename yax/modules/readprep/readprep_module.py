@@ -1,7 +1,7 @@
 from yax.state.tests.test_pipeline.artifacts.prepared_reads import\
 PreparedReads
 from yax.state.type.parameter import\
-Float, Int, Str, File, Directory
+Float, Int, Str, File
 
 import subprocess
 import configparser
@@ -10,10 +10,10 @@ import configparser
 def main(working_dir, output, path_to_readprep_main: File, infile_list: File,
          num_workers: Int,
          max_mem_target_gb: Int, trimming_type: Str,
-         trimming_segment_length: Int, adapter_list:File="optional",
-         adapter_tolerance:Int="optional", minimum_quality:Int="optional",
-         max_below_threshold:Int="optional")\
-        -> (prepared_reads):
+         trimming_segment_length: Int, adapter_list: File="optional",
+         adapter_tolerance: Int="optional", minimum_quality: Int="optional",
+         max_below_threshold: Int="optional")\
+        -> (PreparedReads):
 
     prepared_reads, = output
 
@@ -29,12 +29,12 @@ def main(working_dir, output, path_to_readprep_main: File, infile_list: File,
     prepared_reads.minimum_quality = minimum_quality
     prepared_reads.max_below_threshold = max_below_threshold
 
-    path_to_config_file = "/".join([work_dir, "/", runid,
+    path_to_config_file = "/".join([working_dir, "/", "runid",
                           "readprep_config.ini"])
     write_readprep_config()
     run_readprep()
 
-    def write_readprep_config(self):
+    def write_readprep_config():
         config = configparser.ConfigParser()
         config['paths'] = {'infile_list': infile_list,
                            'work_dir': working_dir,
@@ -52,7 +52,7 @@ def main(working_dir, output, path_to_readprep_main: File, infile_list: File,
         with open(path_to_config_file) as readprep_configfile:
             config.write(readprep_configfile)
 
-    def run_readprep(self):
+    def run_readprep():
         command = ["python", path_to_readprep_main, path_to_config_file]
         subprocess.call(" ".join(command), shell=True)
 
