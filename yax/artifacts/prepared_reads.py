@@ -21,7 +21,8 @@ class PreparedReads(Artifact):
         if completed:
             reads_files = []
             # get files from self.out_dir
-            self.read_headers, self.read_sequences = get_reads(reads_files)
+            self.read_headers, self.read_sequences = \
+            self.get_reads(reads_files)
 
     def get_reads(self):
         read_headers = []
