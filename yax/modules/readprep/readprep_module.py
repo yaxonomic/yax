@@ -1,8 +1,6 @@
 from yax.state.tests.test_pipeline.artifacts.prepared_reads import\
-PreparedReads
-from yax.state.type.parameter import\
-Float, Int, Str, File
-
+                                                            PreparedReads
+from yax.state.type.parameter import Int, Str, File
 import subprocess
 import configparser
 

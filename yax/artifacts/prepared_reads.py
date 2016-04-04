@@ -20,7 +20,7 @@ class PreparedReads(Artifact):
 
         if completed:
             reads_files = []
-            #get files from self.out_dir
+            # get files from self.out_dir
             self.read_headers, self.read_sequences = get_reads(reads_files)
 
     def get_reads(self):
@@ -28,7 +28,7 @@ class PreparedReads(Artifact):
         read_sequences = []
 
         for reads_file in reads_files:
-            headers, sequences =
+            headers, sequences =\
             supporting_functions.read_fasta_file(reads_file)
             read_headers.extend(headers)
             read_sequences.extend(sequences)
