@@ -3,7 +3,7 @@ from yax.state.tests.test_pipeline.artifacts.artifact_b import ArtifactB
 from yax.state.type.parameter import Float, Int
 
 
-def main(working_dir, output, input_float: Float, input_int: Int)\
+def main(working_dir, output, details, input_float: Float, input_int: Int)\
         -> (ArtifactA, ArtifactB):
     art_a, art_b = output
 
