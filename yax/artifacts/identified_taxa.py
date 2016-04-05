@@ -7,7 +7,7 @@ class IdentifiedTaxa(Artifact):
 
         if completed:
             self.identified_taxa_file = None
-            read_identified_taxa()
+            self.read_identified_taxa()
 
     def read_identified_taxa():
         pass
