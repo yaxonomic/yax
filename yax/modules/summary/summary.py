@@ -29,7 +29,7 @@ def main(working_directory, output, summary_stats: SummaryStats,
 
 
 def _run_summary(summary_stats, summary_table, coverage_data, order_method,
-                 total_results, bin_size, output_path, output_artifact_path,
+                 total_results, bin_size, output_path, output,
                  working_directory):
     """
     :param summary_stats:
@@ -54,7 +54,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
     coverage_snippet = ''.join(open(file_path + "/coverage_snippet.html", 'r')
                                .readlines())
 
-    coverage_data = _get_files(coverage_data)
+    coverage_data = coverage_data.samples
     # For each sample, fill out templates with appropriate data
     for n, sample in enumerate(coverage_data):
         print('Calculating coverage data: sample ' + str(n + 1) + '/' +
@@ -73,14 +73,14 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
             tax_id = key.split('|')[0]
             name = key.split('|')[1]
             _set_hit_data(tax_id, summary_stats, summary_table)
-            calculate_coverage_stats(taxid_coverage)
+            _calculate_coverage_stats(taxid_coverage)
             references = _order_results(taxid_coverage, order_method,
                                         total_results)
             table = _generate_table(references, taxid_coverage)
 
             gi_data = ""
             for j, reference in enumerate(references):
-                coverage_plot = _generate_coverage_plot(reference, n,
+                coverage_plot = _generate_coverage_plot(reference, sample.name,
                                                         taxid_coverage
                                                         [reference],
                                                         working_directory,
@@ -92,17 +92,19 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
                                                    gi_data)
 
         print('Writing output file.')
+
         writer = StringIO()
         writer.write(template.format(css, n, template_data))
 
         # Write pdf to configurable output path
         pdfkit.from_string(writer.getvalue(), str(output_path) + "sample_" +
                            str(n + 1) + ".pdf")
-
-        # Write pdf to output artifact location
-        pdfkit.from_string(writer.getvalue(), str(output_artifact_path) +
-                           "sample_" + str(n + 1) + ".pdf")
         writer.close()
+
+        # Complete output artifact
+        output.write_summary(template.format(css, n, template_data),
+                             "sample_" + str(n))
+    #output.complete()
 
 
 def _parse_summary_data(coverage_data):
@@ -111,37 +113,32 @@ def _parse_summary_data(coverage_data):
     stores a dictionary with gis as keys and a list of coverage values as
     values.
     """
-    with open(coverage_data, 'r') as sam_file:
-        sam_lines = sam_file.readlines()
 
     coverage = {}
+    for sequence in coverage_data.sequences:
+        tax_id = '|'.join(_get_taxid_and_name(sequence.gi))
+        if tax_id not in coverage:
+            coverage[tax_id] = {}
+        coverage[tax_id][sequence.gi] = [0] * (sequence.length + 6)
+        coverage[tax_id][sequence.gi][5] = sequence.length
+
     max_coverage = 0
-    for line in sam_lines:
-        try:
-            if line[:3] == '@SQ':
-                _append_reference_array(coverage, line)
-                continue
-            elif line[0] == '@':
-                continue
-            current_line = line.split('\t')
+    for alignment in coverage_data.alignments:
+        gi = alignment.gi
+        tax_id = '|'.join(_get_taxid_and_name(gi))
 
-            gi = current_line[2].split('|')[1]
-            tax_id = '|'.join(_get_taxid_and_name(gi))
+        if tax_id not in coverage:
+            continue
 
-            if tax_id not in coverage:
-                continue
+        position = alignment.position
+        length = alignment.length
 
-            position = int(current_line[3])
-            length = int(len(current_line[9]))
-
+        if gi in coverage[tax_id]:
             for i in range(position, position + length):
                 coverage[tax_id][gi][i + 5] += 1
                 if coverage[tax_id][gi][i + 5] > max_coverage:
                     max_coverage = coverage[tax_id][gi][i + 5]
-
-        except Exception:
-            continue
-
+    print(max_coverage)
     return coverage, max_coverage
 
 
@@ -210,11 +207,13 @@ def _order_results(tax_id, order_method, total_results):
         references.sort(key=lambda ref: tax_id[ref][3], reverse=True)
     elif order_method == "UNIQUE_HITS":
         references.sort(key=lambda ref: tax_id[ref][4], reverse=True)
+    else:
+        references.sort(key=lambda ref: tax_id[ref][0], reverse=True)
 
     return references[:total_results]
 
 
-def calculate_coverage_stats(coverage):
+def _calculate_coverage_stats(coverage):
     """
     For each gi, counts of number of bases in the sequence that are covered by
      at least one read to calculate the absolute coverage. Divides this amount
@@ -252,7 +251,7 @@ def _generate_table(references, coverage):
         average_coverage /= length
         average_coverage = "%.4f" % average_coverage
 
-        table += "<td>" + "</td><td>".join([reference, str(length),
+        table += "<td>" + "</td><td>".join([str(reference), str(length),
                                             str(abs_coverage),
                                             str(rel_coverage),
                                             str(average_coverage)]) \
@@ -300,7 +299,6 @@ def _generate_coverage_plot(gi, sample_id, reference, file_path, bin_size,
         return str(file_path) + '/coverage_' + str(gi) + '_' + str(sample_id) \
             + '.png'
     except Exception as e:
-        print(e)
         return e
 
 
@@ -329,9 +327,36 @@ def _get_taxid_and_name(gi):
     Returns the tax id and scientific organism name as a tuple of the given gi.
     Uses the TaxID Branch clipper tool.
     """
-    return 'Organism name', gi
+
+    # Test Code
+    tax_id = random.randint(1, 3)
+    if tax_id == 1:
+        return "Organism One", str(tax_id)
+    elif tax_id == 2:
+        return "Organism Two", str(tax_id)
+    elif tax_id == 3:
+        return "Organism Three", str(tax_id)
 
 
-_run_summary("", "", "/home/hayden/Desktop/bowtie/coverage/",
+
+import random
+
+test_coverage = CoverageData()
+sample = CoverageData.Sample("Sample One")
+for n in range(random.randint(3, 9)):
+    gi = random.randint(1000, 9999)
+    gi_length = random.randint(5000, 80000)
+    sample.sequences.append(CoverageData.Sequence(gi, gi_length))
+    for i in range(random.randint(100, 5000)):
+        alignment_length = random.randint(20, 900)
+        position = random.randint(0, gi_length - alignment_length - 1)
+        sample.alignments.append(CoverageData.Alignment(gi, alignment_length,
+                                                        position))
+
+test_coverage.samples.append(sample)
+
+output = Summary("/home/hayden/Desktop/")
+
+_run_summary("", "", test_coverage,
              "ABSOLUTE_COVERAGE", 5, 50, "/home/hayden/Desktop/",
-             "/home/hayden/Desktop/", "/home/hayden/Desktop/")
+             output, "/home/hayden/Desktop/")
