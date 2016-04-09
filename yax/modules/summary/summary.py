@@ -54,12 +54,14 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
     coverage_snippet = ''.join(open(file_path + "/coverage_snippet.html", 'r')
                                .readlines())
 
-    coverage_data = coverage_data.samples
+    samples = coverage_data.samples
     # For each sample, fill out templates with appropriate data
-    for n, sample in enumerate(coverage_data):
+    for n, sample in enumerate(samples):
         print('Calculating coverage data: sample ' + str(n + 1) + '/' +
-              str(len(coverage_data)))
-        # Get ordered list of tax ids and gis
+              str(len(samples)))
+
+        # Get dictionary containing coverage data for each gi, separated into
+        # their respective tax ids
         coverage, max_coverage = _parse_summary_data(sample)
 
         template_data = ""
@@ -68,15 +70,24 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
             print('Calculating coverage data: tax id ' + str(i + 1) + '/' +
                   str(len(list(coverage.keys()))))
 
+            # get coverage data for all gis belonging to a certain tax id
             taxid_coverage = coverage[key]
 
+            # get tax id and organism name
             tax_id = key.split('|')[1]
             name = key.split('|')[0]
+
+            # calculate coverage statistics
             _calculate_coverage_stats(taxid_coverage)
+
+            # Get a sorted list of gis
             references = _order_results(taxid_coverage, order_method,
                                         total_results)
+
+            # generate table of gis
             table = _generate_table(references, taxid_coverage)
 
+            # for each gi, calculate a coverage plot
             gi_data = ""
             for j, reference in enumerate(references):
                 coverage_plot = _generate_coverage_plot(reference, sample.name,
@@ -108,19 +119,49 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
 
 def _parse_summary_data(coverage_data):
     """
-    Parse sam files and build a dictionary of taxids that, for each taxid,
-    stores a dictionary with gis as keys and a list of coverage values as
-    values.
+    Builds a dictionary representing coverage data. Keys in the dictionary are
+    tax ids and value are sub-dictionaries. Sub-dictionaries have gis as keys
+    and sub-sub-dictionaries as values. These sub-sub-dictionaries contain all
+    coverage data for a particular gi.
+
+    output:
+
+    { 'organism-name|tax-id':
+        {
+            'gi': {
+                'length': value
+                'abs_coverage': value
+                'rel_coverage': value
+                'total_hits': value
+                'unique_hits': value
+                'inform_hits': value
+                'sequence':[a list where each value is the number of times that
+                base is covered by an alignment]
+            }
+        }
+    }
     """
 
     coverage = {}
+    # For each sequence in the coverage data, add a record in the dictionary
+    # representing the sequence and all it's initially empty coverage
+    # statistics
     for sequence in coverage_data.sequences:
         tax_id = '|'.join(_get_taxid_and_name(sequence.gi))
+        # if the tax id is not in the dictionary, add it
         if tax_id not in coverage:
             coverage[tax_id] = {}
-        coverage[tax_id][sequence.gi] = [0] * (sequence.length + 6)
-        coverage[tax_id][sequence.gi][5] = sequence.length
+        # add empty coverage stats to the dictionary record for current tax id
+        coverage[tax_id][sequence.gi] = {"length": sequence.length,
+                                         "abs_coverage": 0,
+                                         "rel_coverage": 0,
+                                         "total_hits": 0,
+                                         "unique_hits": 0,
+                                         "inform_hits": 0,
+                                         "sequence": [0] * sequence.length}
 
+    # For each alignment in the coverage data, update the coverage stats in the
+    # coverage dict to reflect the alignment
     max_coverage = 0
     for alignment in coverage_data.alignments:
         gi = alignment.gi
@@ -132,32 +173,43 @@ def _parse_summary_data(coverage_data):
         position = alignment.position
         length = alignment.length
 
+        # for each gi, update its coverage sequence
         if gi in coverage[tax_id]:
+            # for each position in the alignment, add 1 to the same position on
+            # the coverage sequence
             for i in range(position, position + length):
-                coverage[tax_id][gi][i + 5] += 1
-                if coverage[tax_id][gi][i + 5] > max_coverage:
-                    max_coverage = coverage[tax_id][gi][i + 5]
+                coverage[tax_id][gi]["sequence"][i] += 1
+                # update max_coverage
+                if coverage[tax_id][gi]["sequence"][i] > max_coverage:
+                    max_coverage = coverage[tax_id][gi]["sequence"][i]
     return coverage, max_coverage
 
 
 def _order_results(tax_id, order_method, total_results):
     """
-    Sorts the list of gis by a given key and returns a certain number of gis
+    Sorts the list of gis by a given key and returns a sublist containing the
+    first n gis
     """
     references = list(tax_id.keys())
 
     if order_method == "ABSOLUTE_COVERAGE":
-        references.sort(key=lambda ref: tax_id[ref][0], reverse=True)
+        references.sort(key=lambda ref: tax_id[ref]["abs_coverage"],
+                        reverse=True)
     elif order_method == "RELATIVE_COVERAGE":
-        references.sort(key=lambda ref: tax_id[ref][1], reverse=True)
+        references.sort(key=lambda ref: tax_id[ref]["rel_coverage"],
+                        reverse=True)
     elif order_method == "TOTAL_HITS":
-        references.sort(key=lambda ref: tax_id[ref][2], reverse=True)
+        references.sort(key=lambda ref: tax_id[ref]["total_hits"],
+                        reverse=True)
     elif order_method == "INFORMATIVE_HITS":
-        references.sort(key=lambda ref: tax_id[ref][3], reverse=True)
+        references.sort(key=lambda ref: tax_id[ref]["inform_hits"],
+                        reverse=True)
     elif order_method == "UNIQUE_HITS":
-        references.sort(key=lambda ref: tax_id[ref][4], reverse=True)
+        references.sort(key=lambda ref: tax_id[ref]["unique_hits"],
+                        reverse=True)
     else:
-        references.sort(key=lambda ref: tax_id[ref][0], reverse=True)
+        references.sort(key=lambda ref: tax_id[ref]["abs_coverage"],
+                        reverse=True)
 
     return references[:total_results]
 
@@ -170,45 +222,54 @@ def _calculate_coverage_stats(coverage):
     """
     for key in coverage.keys():
         gi = coverage[key]
-        sequence = gi[6:]
+        sequence = gi["sequence"]
         # Calculate absolute coverage
         absolute_coverage = 0
         for n, base in enumerate(sequence):
             if int(base) > 0:
                 absolute_coverage += 1
         # Set absolute coverage
-        gi[0] = absolute_coverage
+        gi["abs_coverage"] = absolute_coverage
         # Calculate relative coverage
-        gi[1] = gi[0] / (len(gi) - 6)
+        gi["rel_coverage"] = absolute_coverage / len(sequence)
 
 
 def _generate_table(references, coverage):
     """
     Generates a table where each row is a gi with coverage information.
     """
+    # Set table heading
     table = "<table><tr><th>GI</th><th>Length</th><th>Absolute coverage</th>" \
             "<th>Relative coverage</th><th>Average Coverage</th>" \
             "<th>Total Hits</th><th>Unique Hits</th><th>Informative Hits" \
             "</th></tr>"
     for reference in references:
-        sequence = coverage[reference]
+        gi = coverage[reference]
         table += "<tr>"
-        length = sequence[5]
-        abs_coverage = sequence[0]
-        rel_coverage = "%.4f" % sequence[1]
+
+        # get data for row in the table
+        length = gi["length"]
+        abs_coverage = gi["abs_coverage"]
+        rel_coverage = "%.4f" % gi["rel_coverage"]
+        total_hits = gi["total_hits"]
+        unique_hits = gi["unique_hits"]
+        inform_hits = gi["inform_hits"]
+
+        # calculate average coverage
         average_coverage = 0
-        for base in sequence[6:]:
+        for base in gi["sequence"]:
             average_coverage += base
         average_coverage /= length
         average_coverage = "%.4f" % average_coverage
 
+        # Build table as HTML string
         table += "<td>" + "</td><td>".join([str(reference), str(length),
                                             str(abs_coverage),
                                             str(rel_coverage),
                                             str(average_coverage),
-                                            "-",
-                                            "-",
-                                            "-"]) \
+                                            str(total_hits),
+                                            str(unique_hits),
+                                            str(inform_hits)]) \
                  + "</td></tr>"
     table += "</table>"
     return table
@@ -221,8 +282,8 @@ def _generate_coverage_plot(gi, sample_id, reference, file_path, bin_size,
     the plot as an image.
     """
     try:
-        sequence = reference[6:]
-        length = reference[5]
+        sequence = reference["sequence"]
+        length = reference["length"]
 
         # Average data across bins
         binned_data = _bin_sequence(sequence, bin_size)
@@ -233,7 +294,7 @@ def _generate_coverage_plot(gi, sample_id, reference, file_path, bin_size,
         mpl.rcParams['ytick.labelsize'] = 'small'
 
         # Figure size
-        pyplot.figure(figsize=(8, 2.057), dpi=72, tight_layout=True)
+        pyplot.figure(figsize=(6.5, 2.057), dpi=160, tight_layout=True)
 
         # plot of the data
         pyplot.plot(range(length), binned_data, '-', color="#000000")
@@ -257,19 +318,32 @@ def _generate_coverage_plot(gi, sample_id, reference, file_path, bin_size,
 
 
 def _bin_sequence(sequence, bin_size):
+    """
+    Divides the sequence into bins of the specified size and averages coverage
+    across the entire bin.
+    """
     binned_data = [0] * len(sequence)
     average = 0
     bin_start = 0
+    # mid_bin flag is true if the iteration is currently in the middle of a bin
+    # as opposed to an edge between bins
     mid_bin = False
     for n, base in enumerate(sequence):
         mid_bin = True
+        # if n % bin_size == 0, start a new bin
         if n > 0 and n % bin_size == 0:
             mid_bin = False
+            # calculate average
             average /= n - bin_start
+            # set all values in the bin to the average value
             binned_data[bin_start: n] = [average] * (n - bin_start)
+            # reset average
             average = 0
+            # set current position to start of next bin
             bin_start = n
         average += base
+    # if iteration ended in the middle of a bin, the remainder of the bases
+    # must be averaged over the remainder of the sequence.
     if mid_bin:
         average /= len(sequence) - bin_start
         binned_data[bin_start:] = [average] * (len(sequence) - bin_start)
