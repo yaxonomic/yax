@@ -103,7 +103,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
         # Complete output artifact
         output.write_summary(template.format(css, sample.name, template_data),
                              "sample_" + str(n))
-    #output.complete()
+    output.complete()
 
 
 def _parse_summary_data(coverage_data):

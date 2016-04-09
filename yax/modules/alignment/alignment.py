@@ -45,4 +45,5 @@ def run_alignment(gi_references, sample_reads, output,
             print("ALIGNMENT: Failed to perform bowtie alignment.")
             print(e)
 
+    output.build_coverage_data()
     output.complete()
