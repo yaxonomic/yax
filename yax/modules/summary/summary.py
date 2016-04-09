@@ -187,7 +187,9 @@ def _generate_table(references, coverage):
     Generates a table where each row is a gi with coverage information.
     """
     table = "<table><tr><th>GI</th><th>Length</th><th>Absolute coverage</th>" \
-            "<th>Relative coverage</th><th>Average Coverage</th></tr>"
+            "<th>Relative coverage</th><th>Average Coverage</th>" \
+            "<th>Total Hits</th><th>Unique Hits</th><th>Informative Hits" \
+            "</th></tr>"
     for reference in references:
         sequence = coverage[reference]
         table += "<tr>"
@@ -203,7 +205,10 @@ def _generate_table(references, coverage):
         table += "<td>" + "</td><td>".join([str(reference), str(length),
                                             str(abs_coverage),
                                             str(rel_coverage),
-                                            str(average_coverage)]) \
+                                            str(average_coverage),
+                                            "-",
+                                            "-",
+                                            "-"]) \
                  + "</td></tr>"
     table += "</table>"
     return table

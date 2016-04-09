@@ -5,16 +5,12 @@ from os.path import isfile, join, splitext
 
 class CoverageData(Artifact):
 
-    def __init__(self):
-        super().__init__(self)
-        self.data_dir = ''
-        self.samples = []
-
-    def _get_coverage_data(self):
+    def get_coverage_data(self):
         """
         Sets the object representation of coverage data from the collection of
         sam files.
         """
+        self.samples = []
         # Get sam files
         files = [f for f in listdir(self.data_dir) if isfile(join(self.data_dir
                                                                   , f)) and

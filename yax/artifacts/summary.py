@@ -7,10 +7,6 @@ import pdfkit
 
 class Summary(Artifact):
 
-    def __init__(self, data_dir):
-        super().__init__(self)
-        self.data_dir = data_dir
-
     def write_summary(self, text, file_name):
         """
         Write a summary pdf to the data_dir.
