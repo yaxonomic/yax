@@ -70,8 +70,8 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
 
             taxid_coverage = coverage[key]
 
-            tax_id = key.split('|')[0]
-            name = key.split('|')[1]
+            tax_id = key.split('|')[1]
+            name = key.split('|')[0]
             _calculate_coverage_stats(taxid_coverage)
             references = _order_results(taxid_coverage, order_method,
                                         total_results)
@@ -87,7 +87,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
 
                 gi_data += coverage_snippet.format(coverage_plot)
 
-            template_data += tax_id_snippet.format(tax_id, name, table,
+            template_data += tax_id_snippet.format(name, tax_id, table,
                                                    gi_data)
 
         print('Writing output file.')
@@ -101,7 +101,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
         writer.close()
 
         # Complete output artifact
-        output.write_summary(template.format(css, n, template_data),
+        output.write_summary(template.format(css, sample.name, template_data),
                              "sample_" + str(n))
     #output.complete()
 
@@ -278,32 +278,9 @@ def _get_taxid_and_name(gi):
     """
 
     # Test Code
+    import random
     tax_id = random.randint(1, 2)
     if tax_id == 1:
         return "Bos grunniens", "30521"
     elif tax_id == 2:
         return "Bos mutus", "72004"
-
-
-
-import random
-
-test_coverage = CoverageData()
-sample = CoverageData.Sample("Sample One")
-for n in range(random.randint(3, 9)):
-    gi = random.randint(1000, 9999)
-    gi_length = random.randint(5000, 80000)
-    sample.sequences.append(CoverageData.Sequence(gi, gi_length))
-    for i in range(random.randint(100, 5000)):
-        alignment_length = random.randint(20, 900)
-        position = random.randint(0, gi_length - alignment_length - 1)
-        sample.alignments.append(CoverageData.Alignment(gi, alignment_length,
-                                                        position))
-
-test_coverage.samples.append(sample)
-
-output = Summary("/home/hayden/Desktop/")
-
-_run_summary("", "", test_coverage,
-             "ABSOLUTE_COVERAGE", 5, 50, "/home/hayden/Desktop/",
-             output, "/home/hayden/Desktop/")
