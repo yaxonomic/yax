@@ -72,7 +72,6 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
 
             tax_id = key.split('|')[0]
             name = key.split('|')[1]
-            _set_hit_data(tax_id, summary_stats, summary_table)
             _calculate_coverage_stats(taxid_coverage)
             references = _order_results(taxid_coverage, order_method,
                                         total_results)
@@ -139,55 +138,6 @@ def _parse_summary_data(coverage_data):
                 if coverage[tax_id][gi][i + 5] > max_coverage:
                     max_coverage = coverage[tax_id][gi][i + 5]
     return coverage, max_coverage
-
-
-def _get_files(coverage_data):
-    """
-    Get a list of files in the coverage_data directory.
-    """
-    try:
-        return [str(coverage_data) + name for name in os.listdir(coverage_data)
-                if os.path.isfile(str(coverage_data) + name)]
-    except Exception:
-        return None
-
-
-def _append_reference_array(coverage, line):
-    """
-    :param line: line in the sam file
-    :param coverage: 2d array with subarrays representing coverage for each
-    sequence
-    :return: Sets entry for certain gi to an array of zeros the same length
-    as the reference
-    """
-    line = line.split('\t')
-    gi = line[1].split('|')[1]
-    tax_id = '|'.join(_get_taxid_and_name(gi))
-    length = int(line[2].split(':')[1])
-
-    if tax_id not in coverage.keys():
-        coverage[tax_id] = {}
-    coverage[tax_id][gi] = [0] * (length + 6)
-    coverage[tax_id][gi][5] = length
-
-
-def _set_hit_data(stats, table, coverage):
-    """
-    NOT FINISHED
-    Uses summary stats and table to set the number of unique and informative
-    hits for each reference.
-    """
-    try:
-        with open(stats, 'r') as stats_file:
-            stats_file.readlines()
-    except Exception:
-        return coverage
-
-    try:
-        with open(table, 'r') as table_file:
-            table_file.readlines()
-    except Exception:
-        return coverage
 
 
 def _order_results(tax_id, order_method, total_results):
