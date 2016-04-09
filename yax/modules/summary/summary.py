@@ -138,7 +138,6 @@ def _parse_summary_data(coverage_data):
                 coverage[tax_id][gi][i + 5] += 1
                 if coverage[tax_id][gi][i + 5] > max_coverage:
                     max_coverage = coverage[tax_id][gi][i + 5]
-    print(max_coverage)
     return coverage, max_coverage
 
 
@@ -329,13 +328,11 @@ def _get_taxid_and_name(gi):
     """
 
     # Test Code
-    tax_id = random.randint(1, 3)
+    tax_id = random.randint(1, 2)
     if tax_id == 1:
-        return "Organism One", str(tax_id)
+        return "Bos grunniens", "30521"
     elif tax_id == 2:
-        return "Organism Two", str(tax_id)
-    elif tax_id == 3:
-        return "Organism Three", str(tax_id)
+        return "Bos mutus", "72004"
 
 
 
