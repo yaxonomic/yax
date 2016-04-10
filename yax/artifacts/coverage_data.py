@@ -20,7 +20,7 @@ class CoverageData(Artifact):
         # alignments
         for file in files:
             sample = self.Sample(splitext(file)[0].split('/')[-1])
-            with open(file, 'r') as coverage_file:
+            with open(self.data_dir + '/' + file, 'r') as coverage_file:
                 lines = coverage_file.readlines()
 
             for line in lines:
@@ -30,19 +30,20 @@ class CoverageData(Artifact):
                     if line.startswith('@SQ'):
                         tabs = line.split('\t')
                         gi = tabs[1].split('|')[1]
-                        length = tabs[2].split(':')[1]
+                        length = int(tabs[2].split(':')[1])
                         sample.sequences.append(self.Sequence(gi, length))
                     # If the line is an alignment, add it to the sample's list
                     # of alignments
                     else:
                         tabs = line.split('\t')
                         gi = tabs[2].split('|')[1]
-                        position = tabs[3]
+                        position = int(tabs[3])
                         length = len(tabs[9])
                         sample.alignments.append(self.Alignment(gi, length,
                                                                 position))
                 except Exception:
                     continue
+            self.samples.append(sample)
 
     class Sample:
         # Holds the sequences listed in the sam file and the alignments to that

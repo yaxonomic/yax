@@ -8,8 +8,8 @@ order this list of Gis.
 import pdfkit
 import matplotlib as mpl
 import matplotlib.pyplot as pyplot
-import os
-import os.path
+from os import listdir, remove
+from os.path import isfile, join, splitext, dirname, realpath
 from io import StringIO
 from yax.artifacts.summary import Summary
 from yax.artifacts.summary_stats import SummaryStats
@@ -46,7 +46,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
     """
 
     # Get HTML templates
-    file_path = os.path.dirname(os.path.realpath(__file__))
+    file_path = dirname(realpath(__file__))
     template = ''.join(open(file_path + "/template.html", 'r').readlines())
     css = file_path + "/style.css"
     tax_id_snippet = ''.join(open(file_path + "/tax_id_snippet.html", 'r')
@@ -107,14 +107,15 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
         writer.write(template.format(css, n, template_data))
 
         # Write pdf to configurable output path
-        pdfkit.from_string(writer.getvalue(), str(output_path) + "sample_" +
-                           str(n + 1) + ".pdf")
+        pdfkit.from_string(writer.getvalue(), str(output_path) + sample.name +
+                           ".pdf")
         writer.close()
 
         # Complete output artifact
         output.write_summary(template.format(css, sample.name, template_data),
-                             "sample_" + str(n))
-    output.complete()
+                             sample.name)
+    _clean_working_dir(working_directory)
+    #output.complete()
 
 
 def _parse_summary_data(coverage_data):
@@ -158,7 +159,8 @@ def _parse_summary_data(coverage_data):
                                          "total_hits": 0,
                                          "unique_hits": 0,
                                          "inform_hits": 0,
-                                         "sequence": [0] * sequence.length}
+                                         "sequence": [0] * sequence.length
+                                         }
 
     # For each alignment in the coverage data, update the coverage stats in the
     # coverage dict to reflect the alignment
@@ -178,6 +180,8 @@ def _parse_summary_data(coverage_data):
             # for each position in the alignment, add 1 to the same position on
             # the coverage sequence
             for i in range(position, position + length):
+                if i >= len(coverage[tax_id][gi]["sequence"]):
+                    break
                 coverage[tax_id][gi]["sequence"][i] += 1
                 # update max_coverage
                 if coverage[tax_id][gi]["sequence"][i] > max_coverage:
@@ -294,7 +298,7 @@ def _generate_coverage_plot(gi, sample_id, reference, file_path, bin_size,
         mpl.rcParams['ytick.labelsize'] = 'small'
 
         # Figure size
-        pyplot.figure(figsize=(6.5, 2.057), dpi=160, tight_layout=True)
+        pyplot.figure(figsize=(8, 1.8), dpi=180, tight_layout=True)
 
         # plot of the data
         pyplot.plot(range(length), binned_data, '-', color="#000000")
@@ -363,3 +367,29 @@ def _get_taxid_and_name(gi):
         return "Bos grunniens", "30521"
     elif tax_id == 2:
         return "Bos mutus", "72004"
+
+
+def _clean_working_dir(working_dir):
+    """
+    Remove temporary image files from working directory.
+    """
+    [remove(working_dir + '/' + f) for f in listdir(working_dir)
+     if isfile(join(working_dir, f)) and
+     splitext(f)[1].lower() == '.png']
+
+coverage = CoverageData(completed=True)
+coverage.data_dir = "/home/hayden/Desktop/bowtie/coverage/"
+coverage.build_coverage_data()
+
+stats = SummaryStats(completed=True)
+
+table = SummaryTable(completed=True)
+
+summary = Summary(completed=False)
+summary.data_dir = "/home/hayden/Desktop/"
+
+_run_summary(stats, table, coverage, "ABSOLUTE_COVERAGE", 9, 50,
+             "/home/hayden/Desktop/yax_out/", summary,
+             "/home/hayden/Desktop/yax_working/")
+
+
