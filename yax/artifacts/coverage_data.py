@@ -45,6 +45,8 @@ class CoverageData(Artifact):
                     continue
             self.samples.append(sample)
 
+
+
     class Sample:
         # Holds the sequences listed in the sam file and the alignments to that
         # sequences

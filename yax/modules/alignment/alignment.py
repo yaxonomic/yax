@@ -13,12 +13,12 @@ from yax.state.type import Str
 
 def main(working_dir, output, reads: Reads, gi_references: GiReferences,
          bowtie_options: Str) -> CoverageData:
-    return run_alignment(gi_references, reads, output, bowtie_options,
-                         working_dir)
+    print("Running alignment.")
+    run_alignment(gi_references, reads, output, bowtie_options, working_dir)
 
 
-def run_alignment(gi_references, sample_reads, output,
-                  bowtie_options, working_dir):
+def run_alignment(gi_references, sample_reads, output, bowtie_options,
+                  working_dir):
     """
     :param gi_references: Location of gi references
     :param sample_reads: Location of reads trimmed by ReadPrep

@@ -23,9 +23,9 @@ def main(working_directory, output, summary_stats: SummaryStats,
          order_method: Str, total_results: Int, bin_size: Int,
          output_path: Directory) -> Summary:
     print('Running summary.')
-    return _run_summary(summary_stats, summary_table, coverage_data,
-                        order_method, total_results, bin_size,
-                        str(output_path), output, str(working_directory))
+    _run_summary(summary_stats, summary_table, coverage_data, order_method,
+                 total_results, bin_size, str(output_path), output,
+                 str(working_directory))
 
 
 def _run_summary(summary_stats, summary_table, coverage_data, order_method,
@@ -60,15 +60,17 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
         print('Calculating coverage data: sample ' + str(n + 1) + '/' +
               str(len(samples)))
 
+        template_data = ""
+
         # Get dictionary containing coverage data for each gi, separated into
         # their respective tax ids
         coverage, max_coverage = _parse_summary_data(sample)
-
-        template_data = ""
-        for i, key in enumerate(list(coverage.keys())):
+        keys = list(coverage.keys())
+        keys.sort()
+        for i, key in enumerate(keys):
 
             print('Calculating coverage data: tax id ' + str(i + 1) + '/' +
-                  str(len(list(coverage.keys()))))
+                  str(len(keys)))
 
             # get coverage data for all gis belonging to a certain tax id
             taxid_coverage = coverage[key]
@@ -89,6 +91,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
 
             # for each gi, calculate a coverage plot
             gi_data = ""
+
             for j, reference in enumerate(references):
                 coverage_plot = _generate_coverage_plot(reference, sample.name,
                                                         taxid_coverage
@@ -180,7 +183,7 @@ def _parse_summary_data(coverage_data):
             # for each position in the alignment, add 1 to the same position on
             # the coverage sequence
             for i in range(position, position + length):
-                if i >= len(coverage[tax_id][gi]["sequence"]):
+                if i == len(coverage[tax_id][gi]["sequence"]):
                     break
                 coverage[tax_id][gi]["sequence"][i] += 1
                 # update max_coverage
@@ -224,12 +227,15 @@ def _calculate_coverage_stats(coverage):
      at least one read to calculate the absolute coverage. Divides this amount
      by the length of the sequence to get relative coverage.
     """
-    for key in coverage.keys():
+    keys = list(coverage.keys())
+    keys.sort()
+
+    for key in keys:
         gi = coverage[key]
         sequence = gi["sequence"]
         # Calculate absolute coverage
         absolute_coverage = 0
-        for n, base in enumerate(sequence):
+        for base in sequence:
             if int(base) > 0:
                 absolute_coverage += 1
         # Set absolute coverage
@@ -359,13 +365,11 @@ def _get_taxid_and_name(gi):
     Returns the tax id and scientific organism name as a tuple of the given gi.
     Uses the TaxID Branch clipper tool.
     """
-
-    # Test Code
-    import random
-    tax_id = random.randint(1, 2)
-    if tax_id == 1:
+    if True:
         return "Bos grunniens", "30521"
-    elif tax_id == 2:
+    if gi == "9626372":
+        return "Bos grunniens", "30521"
+    elif gi == "9626243":
         return "Bos mutus", "72004"
 
 
@@ -388,7 +392,7 @@ table = SummaryTable(completed=True)
 summary = Summary(completed=False)
 summary.data_dir = "/home/hayden/Desktop/"
 
-_run_summary(stats, table, coverage, "ABSOLUTE_COVERAGE", 9, 50,
+_run_summary(stats, table, coverage, "ABSOLUTE_COVERAGE", 5, 10,
              "/home/hayden/Desktop/yax_out/", summary,
              "/home/hayden/Desktop/yax_working/")
 
