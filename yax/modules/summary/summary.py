@@ -23,9 +23,9 @@ def main(working_directory, output, summary_stats: SummaryStats,
          order_method: Str, total_results: Int, bin_size: Int,
          output_path: Directory) -> Summary:
     print('Running summary.')
-    _run_summary(summary_stats, summary_table, coverage_data, order_method,
-                 total_results, bin_size, str(output_path), output,
-                 str(working_directory))
+    _run_summary(summary_stats, summary_table, coverage_data,
+                 str(order_method), total_results, bin_size, str(output_path),
+                 output, str(working_directory))
 
 
 def _run_summary(summary_stats, summary_table, coverage_data, order_method,
@@ -199,19 +199,19 @@ def _order_results(tax_id, order_method, total_results):
     """
     references = list(tax_id.keys())
 
-    if order_method == "ABSOLUTE_COVERAGE":
+    if order_method.upper() == "ABSOLUTE_COVERAGE":
         references.sort(key=lambda ref: tax_id[ref]["abs_coverage"],
                         reverse=True)
-    elif order_method == "RELATIVE_COVERAGE":
+    elif order_method.upper() == "RELATIVE_COVERAGE":
         references.sort(key=lambda ref: tax_id[ref]["rel_coverage"],
                         reverse=True)
-    elif order_method == "TOTAL_HITS":
+    elif order_method.upper() == "TOTAL_HITS":
         references.sort(key=lambda ref: tax_id[ref]["total_hits"],
                         reverse=True)
-    elif order_method == "INFORMATIVE_HITS":
+    elif order_method.upper() == "INFORMATIVE_HITS":
         references.sort(key=lambda ref: tax_id[ref]["inform_hits"],
                         reverse=True)
-    elif order_method == "UNIQUE_HITS":
+    elif order_method.upper() == "UNIQUE_HITS":
         references.sort(key=lambda ref: tax_id[ref]["unique_hits"],
                         reverse=True)
     else:
