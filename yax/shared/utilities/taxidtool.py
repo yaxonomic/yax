@@ -59,8 +59,7 @@ TaxIDDataRecord = collections.namedtuple(
         "assoc_gis",
         "children",
         "parents",
-        "rank",
-        "num_gis_assoc"))
+        "rank"))
 
 
 def parse_taxid_data(input_taxid_data_fp):
@@ -77,7 +76,7 @@ def parse_taxid_data(input_taxid_data_fp):
 
     Returns
     -------
-    taxid_data : dict
+    taxid_data : dict of tax_id to TaxIDDataRecord
         contains all taxids found in provided taxid_data
 
     See Also
@@ -85,7 +84,6 @@ def parse_taxid_data(input_taxid_data_fp):
     write_taxid_data
 
     """
-    num_gis_assoc = 0
     results = {}
     with open(input_taxid_data_fp, mode='r') as fh:
         lines = fh.readlines()
@@ -99,8 +97,7 @@ def parse_taxid_data(input_taxid_data_fp):
         ancestors = json.loads(ancestors)
 
         results[taxid] = TaxIDDataRecord(taxid, sci_name, assoc_gis,
-                                         children, ancestors, rank,
-                                         num_gis_assoc)
+                                         children, ancestors, rank)
 
     return results
 
@@ -108,21 +105,27 @@ def parse_taxid_data(input_taxid_data_fp):
 def build_taxid_data(nodes_fp, names_fp, gi_taxid_nucl_fp):
     """Builds taxid_data.
 
-    Based on NCBI taxa.dmp files the taxid_data
+    Based on NCBI taxa.dmp files the taxid_data this modules builds a
+    dictionary representation of the tree of life. This allows quick lookup
+    of various pieces of information in a taxid centric way.
 
     Parameters
     ----------
     nodes_fp : str
-        location of nodes.dmp file
+        location of nodes.dmp file which contains the information regarding
+        the relationships between taxids
     names_fp : str
-        location of names.dmp file
+        location of names.dmp file which contains the scientific names of
+        based on each taxid
     gi_taxid_nucl_fp : str
-        location of gi_taxid_nucl.dmp file
+        location of gi_taxid_nucl.dmp file which contains the association
+        between each gi and which taxid it belongs to
 
     Returns
     -------
-    dict
-        Big Dictionary
+    dict of tax_id to TaxIDDataRecord
+        stores the compiled data from nodes.dmp, names.dmp, and
+        gi_taxid_nucl.dmp in a single place
 
     See Also
     --------
@@ -147,8 +150,7 @@ def build_taxid_data(nodes_fp, names_fp, gi_taxid_nucl_fp):
                                             taxid_gi.get(taxid, []),
                                             children,
                                             parents,
-                                            nodes[taxid].rank,
-                                            0)
+                                            nodes[taxid].rank)
 
         current_taxid = taxid
 
@@ -200,8 +202,8 @@ def write_taxid_data(taxid_data, output_fp):
         fh.write("\n".join(output))
 
 
-def build_tree(taxid_data, sequences_input_fp, taxids_to_include_fp,
-               taxids_to_exclude_fp, truncation_level):
+def build_tree(taxid_data, sequences_input_fp, inclusion_roots,
+               exclusion_roots):
     """Builds indicated taxonomic subtree.
 
     Based on input taxids a subtree(s) is/are built containing all organisms
@@ -215,10 +217,10 @@ def build_tree(taxid_data, sequences_input_fp, taxids_to_include_fp,
     sequences_input_fp : str
         location of FASTA formatted file containing sequences to filter for
         inclusion in .seqs output
-    taxids_to_include_fp : str
-        location of file containing taxids to include in output trees
-    taxids_to_exclude_fp : str
-        location of file containing taxids to exclude from output treese ac
+    inclusion_roots : list
+        contains all taxids to include in output tree
+    exclusion_roots : list
+        contains all taxids to exclude from the output tree
 
     Returns
     -------
@@ -226,29 +228,15 @@ def build_tree(taxid_data, sequences_input_fp, taxids_to_include_fp,
         similar to taxid_data but only representing the taxids of interest
 
     """
-    exclusion_roots = []
-    if taxids_to_exclude_fp:
-        with open(taxids_to_exclude_fp, mode='r') as fh:
-            for line in fh:
-                exclusion_roots.append(line.strip())
+    exclusion_tree = build_branch(taxid_data, exclusion_roots)
 
-    exclusion_tree = build_branch(taxid_data, exclusion_roots,
-                                  truncation_level)
+    for index, root in enumerate(inclusion_roots):
+        if root in exclusion_tree:
+            raise ValueError("TaxID %s found inside exclusion tree"
+                             % root)
+            del inclusion_roots[index]
 
-    inclusion_roots = []
-    with open(taxids_to_include_fp, mode='r') as fh:
-        for line in fh:
-            this_line = line.strip()
-            if exclusion_roots:
-                if this_line in exclusion_tree:
-                    raise ValueError("TaxID %s found inside exclusion tree"
-                                     % this_line)
-                else:
-                    inclusion_roots.append(this_line)
-
-    inclusion_tree = build_branch(taxid_data,
-                                  inclusion_roots,
-                                  truncation_level)
+    inclusion_tree = build_branch(taxid_data, inclusion_roots)
 
     # Removes taxids in exclusion tree from inclusion tree if one exists
     if exclusion_roots:
@@ -412,6 +400,17 @@ def output_tree(taxid_data, inclusion_tree, output_fp):
 
 
     """
+    num_gis_assoc = {}
+
+    for record in taxid_data:
+        num_gis_assoc[record.taxid] = 0
+
+    for record in taxid_data:
+        num_gis = len(record.assoc_gis)
+        num_gis_assoc[record.taxid] += num_gis
+        for taxid in record.parents:
+            num_gis_assoc[taxid] += num_gis
+
     with open(os.path.join(output_fp, ".tree"), mode='w') as output_fh:
         for taxid in inclusion_tree:
             if inclusion_tree[taxid].children == [] and\
@@ -424,5 +423,5 @@ def output_tree(taxid_data, inclusion_tree, output_fp):
                                                        num_gis_assoc), "\t"])
                 output_string = "".join([output_string, taxid, "\t",
                                          taxid_data[taxid].sci_name, "\t",
-                                         str(taxid_data[taxid].num_gis_assoc)])
+                                         str(num_gis_assoc[taxid])])
                 output_fh.write("".join([output_string, "\n"]))

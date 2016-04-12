@@ -98,7 +98,18 @@ class TestTaxIDTool(unittest.TestCase):
         self.assertEqual(set(results.keys()), {'6', '16', '18', '20', '22'})
 
     def test_build_tree(self):
-        pass
+        taxid_data_fp = get_data_path('taxid_data.txt')
+        taxid_data = taxidtool.parse_taxid_data(taxid_data_fp)
+        sequences_input_fp = get_data_path('sequences.fasta')
+        inclusion_roots = ["6"]
+        exclusion_roots = ["20"]
+
+        results = taxidtool.build_tree(taxid_data,
+                                       sequences_input_fp,
+                                       inclusion_roots,
+                                       exclusion_roots)
+
+        self.assertEqual(set(results.keys()), {'6', '16', '18', '22'})
 
 
 if __name__ == '__main__':
