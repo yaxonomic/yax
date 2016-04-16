@@ -1,48 +1,44 @@
 import subprocess
 
 
-def run_alignment(reference_inlist, index_dir, read_inlist, output_dir):
-    ###############################################################
-    # Running Alignme                                             #
-    ###############################################################
-    print("run_alignment : Enter")
-    reference_files = []
-    reference_names = []
-    read_files = []
-    read_names = []
+def call_bt2_wrapper(allowed_edits,
+                     reads_fp,
+                     index_fp,
+                     output_fp,
+                     allowed_threads):
+    """Uses the metagenomic wrapper to run bowtie2 alignment.
 
-    print("run_alignment : working through references")
-    with open(reference_inlist, 'r') as reference_list:
-        for path in reference_list:
-            this_path = path.rstrip()
-            reference_files.append(this_path)
-            reference_names.append(this_path.split("/")[-1].split(".")[0])
+    The metagenomic wrapper is used to catch the output of bowtie2 and present
+    a format that matches each read to the taxids it aligned to in order of
+    edit distance.
 
-    print("run_alignment : working through reads")
-    with open(read_inlist, 'r') as read_list:
-        for path in read_list:
-            this_path = path.rstrip()
-            read_files.append(this_path)
-            read_names.append(this_path.split("__")[1])
+    Please note that this code is designed specifcally to operate with a SLURM
+    task management tool.
 
-    sam_outputs = []
-    for ref_num, reference_file in enumerate(reference_files):
-        for read_num, read_file in enumerate(read_files):
-            print("run_alignment : running taxa_identification of " +
-                  read_names[read_num] + " to " + reference_names[ref_num])
-            output = output_dir + reference_names[ref_num] + "__" + \
-                read_names[read_num] + ".sam"
-            sam_outputs.append(output)
-            command = "bowtie2 -a -f -x " + index_dir + \
-                      reference_names[ref_num] + "_index -U " + \
-                      read_file + " -S " + output
+    Parameters
+    ----------
+    allowed_edits : int
+        Number of mismatches to allow reporting on
+    reads_fp : str
+        absolute path to the fasta file containing reads to align
+    index_fp : str
+        absolute path to the index file set previously computed
+    output_fp : str
+        absolute path to location and file name where output will be written
+    allowed_threads : int
+        number of threads to allows bowtie2 to spawn
 
-            try:
-                subprocess.call([command], shell=True)
-            except subprocess.CalledProcessError:
-                print("RUN_ALIGNEMENT_FOR_REFERENCE: Unable to run bowtie2: " +
-                      reference_names[ref_num] + "_" +
+    Returns
+    -------
+    None
+        Produces an output file containing that results of bowtie2 alignment
 
-                      read_names[read_num] + ".sam")
-
-    print("run_alignment : Exit")
+    """
+    subprocess.call([" ".join(["srun /common/contrib/bin/"
+                               "bowtie2_mg_aligner "
+                               "-e", allowed_edits,
+                               "-q", reads_fp,
+                               "-i", index_fp,
+                               "-o", output_fp,
+                               "-p", allowed_threads])],
+                               shell=True)

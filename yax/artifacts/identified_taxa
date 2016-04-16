@@ -1,0 +1,9 @@
+from yax.state.type import Artifact
+
+
+class IdentifiedTaxa(Artifact):
+    def __init__(self, completed):
+        self.identification_file = None
+
+        if completed:
+            pass
