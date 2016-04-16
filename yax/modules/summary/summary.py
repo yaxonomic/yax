@@ -8,8 +8,7 @@ order this list of Gis.
 import pdfkit
 import matplotlib as mpl
 import matplotlib.pyplot as pyplot
-from os import listdir, remove
-from os.path import isfile, join, splitext, dirname, realpath
+import os
 from io import StringIO
 from yax.artifacts.summary import Summary
 from yax.artifacts.summary_stats import SummaryStats
@@ -46,7 +45,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
     """
 
     # Get HTML templates
-    file_path = dirname(realpath(__file__))
+    file_path = os.path.dirname(os.path.realpath(__file__))
     template = ''.join(open(file_path + "/template.html", 'r').readlines())
     css = file_path + "/style.css"
     tax_id_snippet = ''.join(open(file_path + "/tax_id_snippet.html", 'r')
@@ -377,9 +376,9 @@ def _clean_working_dir(working_dir):
     """
     Remove temporary image files from working directory.
     """
-    [remove(working_dir + '/' + f) for f in listdir(working_dir)
-     if isfile(join(working_dir, f)) and
-     splitext(f)[1].lower() == '.png']
+    [os.remove(working_dir + '/' + f) for f in os.listdir(working_dir)
+     if os.path.isfile(os.path.join(working_dir, f)) and
+     os.path.splitext(f)[1].lower() == '.png']
 
 coverage = CoverageData(completed=True)
 coverage.data_dir = "/home/hayden/Desktop/bowtie/coverage/"
@@ -392,7 +391,7 @@ table = SummaryTable(completed=True)
 summary = Summary(completed=False)
 summary.data_dir = "/home/hayden/Desktop/"
 
-_run_summary(stats, table, coverage, "ABSOLUTE_COVERAGE", 5, 10,
+_run_summary(stats, table, coverage, "ABSOLUTE_COVERAGE", 2, 1,
              "/home/hayden/Desktop/yax_out/", summary,
              "/home/hayden/Desktop/yax_working/")
 

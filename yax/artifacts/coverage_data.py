@@ -1,6 +1,5 @@
 from yax.state.type import Artifact
-from os import listdir
-from os.path import isfile, join, splitext
+import os
 
 
 class CoverageData(Artifact):
@@ -12,14 +11,14 @@ class CoverageData(Artifact):
         """
         self.samples = []
         # Get sam files
-        files = [f for f in listdir(self.data_dir)
-                 if isfile(join(self.data_dir, f)) and
-                 splitext(f)[1].lower() == '.sam']
+        files = [f for f in os.listdir(self.data_dir)
+                 if os.path.isfile(os.path.join(self.data_dir, f)) and
+                 os.path.splitext(f)[1].lower() == '.sam']
 
         # For each file, create a sample object that holds sequences and
         # alignments
         for file in files:
-            sample = self.Sample(splitext(file)[0].split('/')[-1])
+            sample = self.Sample(os.path.splitext(file)[0].split('/')[-1])
             with open(self.data_dir + '/' + file, 'r') as coverage_file:
                 lines = coverage_file.readlines()
 

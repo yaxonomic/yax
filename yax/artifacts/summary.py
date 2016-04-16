@@ -1,7 +1,6 @@
 from yax.state.type.artifact import Artifact
 from io import StringIO
 import os
-import os.path
 import pdfkit
 
 
