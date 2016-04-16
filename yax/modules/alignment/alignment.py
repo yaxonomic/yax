@@ -5,6 +5,7 @@ generating a .sam file with the alignment data
 """
 
 import subprocess
+import os
 from yax.artifacts.coverage_data import CoverageData
 from yax.artifacts.reads import Reads
 from yax.artifacts.gi_references import GiReferences
@@ -26,7 +27,8 @@ def run_alignment(gi_references, sample_reads, output, bowtie_options,
     :param bowtie_options: Optional bowtie parameters
     """
 
-    command = ["bowtie2-build", gi_references, working_dir + "/index"]
+    command = ["bowtie2-build", gi_references,
+               os.path.join(working_dir, "/index")]
     try:
         # Build bowtie indexes
         subprocess.call(command)

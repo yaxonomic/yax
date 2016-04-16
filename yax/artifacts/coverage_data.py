@@ -1,5 +1,6 @@
 from yax.state.type import Artifact
 import os
+from collections import namedtuple
 
 
 class CoverageData(Artifact):
@@ -43,8 +44,6 @@ class CoverageData(Artifact):
                 except Exception:
                     continue
             self.samples.append(sample)
-
-
 
     class Sample:
         # Holds the sequences listed in the sam file and the alignments to that

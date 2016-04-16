@@ -116,7 +116,6 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
         # Complete output artifact
         output.write_summary(template.format(css, sample.name, template_data),
                              sample.name)
-    _clean_working_dir(working_directory)
     #output.complete()
 
 
@@ -371,14 +370,6 @@ def _get_taxid_and_name(gi):
     elif gi == "9626243":
         return "Bos mutus", "72004"
 
-
-def _clean_working_dir(working_dir):
-    """
-    Remove temporary image files from working directory.
-    """
-    [os.remove(working_dir + '/' + f) for f in os.listdir(working_dir)
-     if os.path.isfile(os.path.join(working_dir, f)) and
-     os.path.splitext(f)[1].lower() == '.png']
 
 coverage = CoverageData(completed=True)
 coverage.data_dir = "/home/hayden/Desktop/bowtie/coverage/"
