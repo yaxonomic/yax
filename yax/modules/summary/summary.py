@@ -116,7 +116,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
         # Complete output artifact
         output.write_summary(template.format(css, sample.name, template_data),
                              sample.name)
-    #output.complete()
+    # output.complete()
 
 
 def _parse_summary_data(coverage_data):
@@ -370,7 +370,6 @@ def _get_taxid_and_name(gi):
     elif gi == "9626243":
         return "Bos mutus", "72004"
 
-
 coverage = CoverageData(completed=True)
 coverage.data_dir = "/home/hayden/Desktop/bowtie/coverage/"
 coverage.build_coverage_data()
@@ -385,5 +384,3 @@ summary.data_dir = "/home/hayden/Desktop/"
 _run_summary(stats, table, coverage, "ABSOLUTE_COVERAGE", 2, 1,
              "/home/hayden/Desktop/yax_out/", summary,
              "/home/hayden/Desktop/yax_working/")
-
-
