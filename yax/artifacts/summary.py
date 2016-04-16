@@ -16,14 +16,3 @@ class Summary(Artifact):
         pdfkit.from_string(writer.getvalue(), str(self.data_dir) + "/" +
                            str(file_name) + ".pdf")
         writer.close()
-
-    def __complete__(self):
-        """
-        Clean up data_dir by deleting temporary coverage plot images
-        """
-        images = [self.data_dir + '/' + f for f in os.listdir(self.data_dir) if
-                  os.path.isfile(os.path.join(self.data_dir, f)) and
-                  len(f.split('.')) > 1 and
-                  f.split('.')[1] == "png"]
-        for image in images:
-            os.remove(image)
