@@ -14,22 +14,29 @@ from yax.artifacts.summary import Summary
 from yax.artifacts.summary_stats import SummaryStats
 from yax.artifacts.summary_table import SummaryTable
 from yax.artifacts.coverage_data import CoverageData
-from yax.state.type.parameter import Directory, Str, Int
+from yax.state.type.parameter import Directory, Str, Int, File
+from yax.shared.utilities import taxidtool
 
 
 def main(working_directory, output, summary_stats: SummaryStats,
          summary_table: SummaryTable, coverage_data: CoverageData,
          order_method: Str, total_results: Int, bin_size: Int,
-         output_path: Directory) -> Summary:
+         output_path: Directory, nodes_fp: File, names_fp: File,
+         gi_taxid_nucl_fp: File) -> Summary:
+
+    tax_id_data = taxidtool.build_taxid_data(nodes_fp, names_fp,
+                                             gi_taxid_nucl_fp)
+    gis_to_taxids = taxidtool.build_gis_to_taxids(tax_id_data)
+
     print('Running summary.')
     _run_summary(summary_stats, summary_table, coverage_data,
                  str(order_method), total_results, bin_size, str(output_path),
-                 output, str(working_directory))
+                 output, str(working_directory), gis_to_taxids)
 
 
 def _run_summary(summary_stats, summary_table, coverage_data, order_method,
                  total_results, bin_size, output_path, output,
-                 working_directory):
+                 working_directory, gis_to_taxids):
     """
     :param summary_stats:
     :param summary_table:
@@ -63,7 +70,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
 
         # Get dictionary containing coverage data for each gi, separated into
         # their respective tax ids
-        coverage, max_coverage = _parse_summary_data(sample)
+        coverage, max_coverage = _parse_summary_data(sample, gis_to_taxids)
         keys = list(coverage.keys())
         keys.sort()
         for i, key in enumerate(keys):
@@ -119,7 +126,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
     # output.complete()
 
 
-def _parse_summary_data(coverage_data):
+def _parse_summary_data(coverage_data, gis_to_taxids):
     """
     Builds a dictionary representing coverage data. Keys in the dictionary are
     tax ids and value are sub-dictionaries. Sub-dictionaries have gis as keys
@@ -149,7 +156,7 @@ def _parse_summary_data(coverage_data):
     # representing the sequence and all it's initially empty coverage
     # statistics
     for sequence in coverage_data.sequences:
-        tax_id = '|'.join(_get_taxid_and_name(sequence.gi))
+        tax_id = '|'.join(_get_taxid_and_name(sequence.gi, gis_to_taxids))
         # if the tax id is not in the dictionary, add it
         if tax_id not in coverage:
             coverage[tax_id] = {}
@@ -168,7 +175,7 @@ def _parse_summary_data(coverage_data):
     max_coverage = 0
     for alignment in coverage_data.alignments:
         gi = alignment.gi
-        tax_id = '|'.join(_get_taxid_and_name(gi))
+        tax_id = '|'.join(_get_taxid_and_name(gi, gis_to_taxids))
 
         if tax_id not in coverage:
             continue
@@ -358,17 +365,12 @@ def _bin_sequence(sequence, bin_size):
     return binned_data
 
 
-def _get_taxid_and_name(gi):
+def _get_taxid_and_name(gi, gis_to_taxids):
     """
     Returns the tax id and scientific organism name as a tuple of the given gi.
     Uses the TaxID Branch clipper tool.
     """
-    if True:
-        return "Bos grunniens", "30521"
-    if gi == "9626372":
-        return "Bos grunniens", "30521"
-    elif gi == "9626243":
-        return "Bos mutus", "72004"
+    return gis_to_taxids[gi], "Scientific Name"
 
 coverage = CoverageData(completed=True)
 coverage.data_dir = "/home/hayden/Desktop/bowtie/coverage/"
@@ -381,6 +383,8 @@ table = SummaryTable(completed=True)
 summary = Summary(completed=False)
 summary.data_dir = "/home/hayden/Desktop/"
 
+tax_id_data = {}
+
 _run_summary(stats, table, coverage, "ABSOLUTE_COVERAGE", 2, 1,
              "/home/hayden/Desktop/yax_out/", summary,
-             "/home/hayden/Desktop/yax_working/")
+             "/home/hayden/Desktop/yax_working/", tax_id_data)
