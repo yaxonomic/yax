@@ -1,7 +1,6 @@
 import os
 
 from yax.state.type import Artifact
-import supporting_functions
 
 
 class PreparedReads(Artifact):

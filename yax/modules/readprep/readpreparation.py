@@ -1,3 +1,5 @@
+import os
+
 from yax.state.tests.test_pipeline.artifacts.prepared_reads import\
     PreparedReads
 from yax.state.type.parameter import Int, Str, File
@@ -64,13 +66,17 @@ def main(working_dir,
     prepared_reads, = output
 
     config_file_fp = os.path.join(working_dir,
-                                       details.runid + "readprep_config.ini")
+                                  "".join([details.runid,
+                                           "readprep_config.ini"]))
 
     prepared_reads.config_file_fp = config_file_fp
+    prepared_reads.prepared_reads_fp = "".join([details.data_dir,
+                                                "prepared_reads.txt"])
 
     generate_readprep_config(config_file_fp,
                              infile_list,
                              working_dir,
+                             prepared_reads.prepared_reads_fp,
                              details.num_workers,
                              details.max_mem_target_gb,
                              trimming_type,
@@ -84,9 +90,11 @@ def main(working_dir,
 
     return output
 
+
 def generate_readprep_config(config_file_fp,
                              infile_list,
                              working_dir,
+                             prepared_reads_fp,
                              num_workers,
                              max_mem_target_gb,
                              trimming_type,
@@ -147,10 +155,10 @@ def generate_readprep_config(config_file_fp,
                           'segment_length': trimming_segment_length}
 
     # optional fields of readprep
-    if adapter_list not None:
+    if adapter_list is not None:
         config['adapters'] = {'adapter_list': adapter_list,
                               'adapter_tolerance': adapter_tolerance}
-    if minimum_quality not None:
+    if minimum_quality is not None:
         config['quality_filter'] = {'minimum_quality': minimum_quality,
                                     'max_below_threshold': max_below_threshold}
 
@@ -183,4 +191,4 @@ def call_readprep(readprep_main_fp, config_file_fp):
     subprocess.call([" ".join(["python",
                                readprep_main_fp,
                                config_file_fp])],
-                               shell=True)
+                    shell=True)
