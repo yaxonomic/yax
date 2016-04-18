@@ -36,13 +36,22 @@ def run_alignment(gi_references, sample_reads, output, bowtie_options,
         print("ALIGNMENT: Failed to build bowtie indexes.")
         print(e)
 
+    completed_files = output.get_completed_coverage_files().sort()
+
     for i, sample in enumerate(sample_reads):
+
+        file = "sample_" + str(i) + "_coverage.sam"
+        if file in completed_files:
+            continue
+
         command = ["bowtie2-align"] + bowtie_options + \
                   ["-x", working_dir + "/index", "-U", sample, "-S",
-                   str(output.data_dir) + "/sample_" + str(i) + "coverage.sam"]
+                   str(output.data_dir) + "/sample_" + str(i) +
+                   "_coverage.sam"]
         try:
             # Align sequences to references
             subprocess.call(command)
+            output.append_completed_file("sample_" + str(i) + "_coverage.sam")
         except Exception as e:
             print("ALIGNMENT: Failed to perform bowtie alignment.")
             print(e)

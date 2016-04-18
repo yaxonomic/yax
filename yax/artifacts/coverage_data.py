@@ -5,6 +5,22 @@ from collections import namedtuple
 
 class CoverageData(Artifact):
 
+    def get_completed_coverage_files(self):
+        """
+        Gets a list of already completed coverage files
+        """
+        completed_files = []
+        with open(os.path.join(self.data_dir, "/.files"), 'r') as files:
+            for file in files.readlines():
+                completed_files.append(file)
+            files.close()
+        return completed_files
+
+    def append_completed_file(self, file):
+        with open(os.path.join(self.data_dir, "/.files", 'a')) as files:
+            files.write(file + '\n')
+            files.close()
+
     def build_coverage_data(self):
         """
         Sets the object representation of coverage data from the collection of
