@@ -1,10 +1,10 @@
 import os
+import subprocess
+import configparser
 
 from yax.state.tests.test_pipeline.artifacts.prepared_reads import\
     PreparedReads
 from yax.state.type.parameter import Int, Str, File
-import subprocess
-import configparser
 
 
 def main(working_dir,
