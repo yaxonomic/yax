@@ -309,7 +309,7 @@ def _generate_coverage_plot(gi, sample_id, reference, file_path, bin_size,
         mpl.rcParams['ytick.labelsize'] = 'small'
 
         # Figure size
-        pyplot.figure(figsize=(8, 1.8), dpi=180, tight_layout=True)
+        fig = pyplot.figure(figsize=(8, 1.8), dpi=180, tight_layout=True)
 
         # plot of the data
         pyplot.plot(range(length), binned_data, '-', color="#000000")
@@ -325,6 +325,8 @@ def _generate_coverage_plot(gi, sample_id, reference, file_path, bin_size,
         # Save plot
         pyplot.savefig(file_path + '/coverage_' + str(gi) + '_' +
                        str(sample_id) + '.png')
+
+        pyplot.close(fig)
 
         return str(file_path) + '/coverage_' + str(gi) + '_' + str(sample_id) \
             + '.png'
