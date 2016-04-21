@@ -27,16 +27,18 @@ def main(working_directory, output, summary_stats: SummaryStats,
     tax_id_data = taxidtool.build_taxid_data(nodes_fp, names_fp,
                                              gi_taxid_nucl_fp)
     gis_to_taxids = taxidtool.build_gis_to_taxids(tax_id_data)
+    taxids_to_names = taxidtool.parse_names_dmp(names_fp)
 
     print('Running summary.')
     _run_summary(summary_stats, summary_table, coverage_data,
                  str(order_method), total_results, bin_size, str(output_path),
-                 output, str(working_directory), gis_to_taxids)
+                 output, str(working_directory), gis_to_taxids,
+                 taxids_to_names)
 
 
 def _run_summary(summary_stats, summary_table, coverage_data, order_method,
                  total_results, bin_size, output_path, output,
-                 working_directory, gis_to_taxids):
+                 working_directory, gis_to_taxids, taxids_to_names):
     """
     :param summary_stats:
     :param summary_table:
@@ -70,7 +72,8 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
 
         # Get dictionary containing coverage data for each gi, separated into
         # their respective tax ids
-        coverage, max_coverage = _parse_summary_data(sample, gis_to_taxids)
+        coverage, max_coverage = _parse_summary_data(sample, gis_to_taxids,
+                                                     taxids_to_names)
         keys = list(coverage.keys())
         keys.sort()
         for i, key in enumerate(keys):
@@ -126,7 +129,7 @@ def _run_summary(summary_stats, summary_table, coverage_data, order_method,
     # output.complete()
 
 
-def _parse_summary_data(coverage_data, gis_to_taxids):
+def _parse_summary_data(coverage_data, gis_to_taxids, taxids_to_names):
     """
     Builds a dictionary representing coverage data. Keys in the dictionary are
     tax ids and value are sub-dictionaries. Sub-dictionaries have gis as keys
@@ -156,7 +159,8 @@ def _parse_summary_data(coverage_data, gis_to_taxids):
     # representing the sequence and all it's initially empty coverage
     # statistics
     for sequence in coverage_data.sequences:
-        tax_id = '|'.join(_get_taxid_and_name(sequence.gi, gis_to_taxids))
+        tax_id = '|'.join(get_taxid_and_name(sequence.gi, gis_to_taxids,
+                                             taxids_to_names))
         # if the tax id is not in the dictionary, add it
         if tax_id not in coverage:
             coverage[tax_id] = {}
@@ -175,7 +179,8 @@ def _parse_summary_data(coverage_data, gis_to_taxids):
     max_coverage = 0
     for alignment in coverage_data.alignments:
         gi = alignment.gi
-        tax_id = '|'.join(_get_taxid_and_name(gi, gis_to_taxids))
+        tax_id = '|'.join(get_taxid_and_name(gi, gis_to_taxids,
+                                             taxids_to_names))
 
         if tax_id not in coverage:
             continue
@@ -367,26 +372,10 @@ def _bin_sequence(sequence, bin_size):
     return binned_data
 
 
-def _get_taxid_and_name(gi, gis_to_taxids):
+def get_taxid_and_name(gi, gis_to_taxids, taxids_to_names):
     """
-    Returns the tax id and scientific organism name as a tuple of the given gi.
-    Uses the TaxID Branch clipper tool.
+    Returns the tax id and scientific name belonging to a gi
     """
-    return gis_to_taxids[gi], "Scientific Name"
-
-coverage = CoverageData(completed=True)
-coverage.data_dir = "/home/hayden/Desktop/bowtie/coverage/"
-coverage.build_coverage_data()
-
-stats = SummaryStats(completed=True)
-
-table = SummaryTable(completed=True)
-
-summary = Summary(completed=False)
-summary.data_dir = "/home/hayden/Desktop/"
-
-tax_id_data = {}
-
-_run_summary(stats, table, coverage, "ABSOLUTE_COVERAGE", 2, 1,
-             "/home/hayden/Desktop/yax_out/", summary,
-             "/home/hayden/Desktop/yax_working/", tax_id_data)
+    tax_id = gis_to_taxids[gi]
+    name = taxids_to_names[tax_id]
+    return tax_id, name
