@@ -3,7 +3,7 @@ import importlib.util
 import inspect
 
 from yax.state.type import Artifact
-from yax.state.type.parameter import Parameter
+from yax.state.type.parameter import Parameter, Str
 
 
 class ExeNode:
@@ -60,6 +60,23 @@ class ExeGraph:
         self.nodes_from_input = collections.OrderedDict()
         self.start_nodes = []
         self.locals = {}
+        self.details = {'run_key': Str}
+
+    @property
+    def artifact_dependencies(self):
+        node_dependencies = {}
+        adjm = self.adjacency_matrix
+        for node in self:
+            dependency = set([node])
+            node_dependencies[node] = dependency
+            for n in adjm:
+                if node in adjm[n]:
+                    dependency |= set([n]) | node_dependencies[n]
+        results = {}
+        for node, dependencies in node_dependencies.items():
+            for artifact in self.output_from_node[node]:
+                results[artifact] = dependencies
+        return results
 
     def add(self, exe_node):
         for var_name, param_name in exe_node.input_map.items():
@@ -76,6 +93,9 @@ class ExeGraph:
             self.nodes_from_input[edge].append(exe_node)
 
         self.output_from_node[exe_node] = list(exe_node.output_map)
+
+    def set_details(self, details):
+        self.details.update(details)
 
     @property
     def adjacency_matrix(self):

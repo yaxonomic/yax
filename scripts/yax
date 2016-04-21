@@ -53,14 +53,14 @@ def init(pipeline, run_key):
 
 @cli.command("prep", help='Prepare a run.')
 @run_configuration_option()
-def prep(config):
+def prep(run_config):
     indiana = Indiana(os.getcwd())
-    indiana.prepare()
+    indiana.prepare(run_config)
 
 
 @cli.command("engage", help='Start a run.')
 @run_configuration_option()
-def engage(config):
+def engage(config, run_config):
     indiana = Indiana(os.getcwd())
     indiana.engage()
 

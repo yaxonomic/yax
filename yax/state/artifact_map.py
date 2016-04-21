@@ -1,4 +1,4 @@
-import os.path
+import os
 import sqlite3
 import contextlib
 
@@ -20,32 +20,125 @@ def auto_rollback(conn):
 
 
 class ArtifactMap:
-    def __init__(self, db_fp, exe_graph):
+    def __init__(self, artifact_dir, db_fp, exe_graph):
         db_exists = os.path.isfile(db_fp)
 
         self.graph = exe_graph
         self.conn = sqlite3.connect(db_fp)
+        self.artifact_dir = artifact_dir
 
         if not db_exists:
             self._init_database()
 
-    def get_artifact(self, artifact_name, params):
+    def get_artifact(self, artifact_name, run_key):
         pass
 
-    def declare_artifact(self, artifact_name, artifact_fp):
-        pass
+    def declare_artifacts(self, config, run_id):
+        for bound_artifact, nodes in self.graph.artifact_dependencies.items():
+            params = self._flatten_config({node.name: config[node.name]
+                                           for node in nodes})
+            rows = self._find_existing_artifacts(bound_artifact, params)
+            if len(rows) == 0:
+                self._declare_new_artifact(run_id, bound_artifact)
+            else:
+                for aid, rid in rows:
+                    if rid == run_id:
+                        print("NOT Adding : " + str(aid))
+                        continue
+                    print("Adding : " + str(aid))
+                    self._insert_into(
+                        'Artifact_Run',
+                        {'run_id': run_id, 'artifact_id': aid})
+
+    def _declare_new_artifact(self, run_id, bound_artifact):
+        path = os.path.join(self.artifact_dir,
+                            "_".join([str(run_id), bound_artifact, 'art']))
+        os.mkdir(path)
+        artifact_id = self._insert_into("Artifact", {'name': bound_artifact,
+                                                     'path': path})
+        if not artifact_id:
+            raise Exception("This shouldn't have happened. Ask Mike what went "
+                            "wrong. mikedeberg@gmail.com")
+
+        self._insert_into("Artifact_Run",
+                          {'run_id': run_id, 'artifact_id': artifact_id})
+
+    def create_run(self, config):
+        config = self._flatten_config(config)
+        run_id = self._insert_into("Run", config)
+        run_key = ""
+        if not run_id:
+            config.pop("run_key")
+            row = self._select_all_from('Run', config)
+            if not row:
+                raise Exception("This run_key already exists.")
+            else:
+                row, = row
+
+            run_id = row[0]
+            run_key = row[1]
+
+        print(run_id, run_key)
+        return run_id
+
+    def _flatten_config(self, config):
+        results = {}
+        for section_key, section in config.items():
+            for key, value in section.items():
+                results["%s_%s" % (section_key, key)] = value
+        if "details_run_key" in results:
+            results['run_key'] = results.pop("details_run_key")
+        return results
+
+    def _insert_into(self, table, values):
+        with auto_rollback(self.conn) as c:
+            # SQL Injection is possible, but honestly, all you would accomplish
+            # is screwing up a directory. We still use '?' because it would be
+            # nice if SQLite told us something was wrong.
+            c.execute("INSERT OR IGNORE INTO %s (%s) VALUES (%s)"
+                      % (table, ','.join(values),
+                         ','.join(['?'] * len(values))),
+                      tuple(values.values()))
+
+            return c.lastrowid
+
+    def _select_all_from(self, table, where):
+        where_sql = " AND ".join(["%s=?" % key for key in where.keys()])
+        with auto_rollback(self.conn) as c:
+            c.execute("SELECT * FROM %s WHERE %s"
+                      % (table, where_sql), tuple(where.values()))
+            return c.fetchall()
+
+    def _find_existing_artifacts(self, artifact_name, params):
+        sql = """
+            SELECT A.id, R.id FROM
+                (SELECT * FROM Run WHERE %s) AS R
+            INNER JOIN
+                Artifact_Run AS AR ON R.id = AR.run_id
+            INNER JOIN
+                Artifact AS A ON A.id = AR.artifact_id
+            WHERE
+                A.name = ?
+        """ % " AND ".join(["%s=?" % key for key in params.keys()])
+
+        with auto_rollback(self.conn) as c:
+            args = tuple(list(params.values()) + [artifact_name])
+            c.execute(sql, args)
+            return c.fetchall()
 
     def _init_database(self):
         with auto_rollback(self.conn) as c:
             c.execute('CREATE TABLE Run (\n    %s\n)' % self._make_run_cols([
                 ('id', 'INTEGER', 'PRIMARY KEY', 'NOT NULL'),
-                ('name', 'TEXT', '', 'NOT NULL')
+                ('run_key', 'TEXT', 'UNIQUE', 'NOT NULL'),
             ]))
 
             c.execute('''
             CREATE TABLE Artifact_Run (
                 artifact_id    INTEGER    NOT NULL,
-                run_id         INTEGER    NOT NULL
+                run_id         INTEGER    NOT NULL,
+                FOREIGN KEY(artifact_id) REFERENCES Artifact(id),
+                FOREIGN KEY(run_id) REFERENCES Run(id)
             )
             ''')
 
@@ -58,12 +151,23 @@ class ArtifactMap:
             ''')
 
     def _make_run_cols(self, columns):
+        for key, value in self.graph.details.items():
+            type_ = value
+            if type(value) is tuple:
+                type_, _ = value
+            field_name = "details_%s" % key
+            field_type = self._translate_param_to_type(type_)
+            if field_name != 'details_run_key':
+                columns.append((field_name, field_type, '', 'NOT NULL'))
+
         for node in self.graph:
             for param, param_type in node.get_input_params().items():
                 field_name = "%s_%s" % (node.name, param)
                 field_type = self._translate_param_to_type(param_type)
                 columns.append((field_name, field_type, '', "NOT NULL"))
-        return ",\n    ".join(self._pretty_format_columns(columns))
+        return ",\n    ".join(self._pretty_format_columns(columns)
+                              + ["UNIQUE(%s)"
+                                 % ", ".join([x[0] for x in columns[2:]])])
 
     def _translate_param_to_type(self, param_type):
         return {

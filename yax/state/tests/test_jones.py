@@ -1,6 +1,8 @@
 import unittest
 import tempfile
 import os
+import configparser
+
 
 from yax.util import get_data_path
 from yax.state.jones import Indiana
@@ -33,6 +35,16 @@ class TestIndiana(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(self.yax_dir,
                                                     'test_run.ini')))
 
+    def test_prepare(self):
+        indiana = Indiana(self.yax_dir, pipeline=self.arch_config_fp)
+        with tempfile.NamedTemporaryFile(mode='w') as fh:
+            config = configparser.ConfigParser()
+            config.read(get_data_path('test_run.ini'))
+            config['module3']['input_file'] = self.arch_config_fp
+            config['module4']['input_dir'] = self.yax_dir
+            config.write(fh)
+            fh.flush()
+            indiana.prepare(fh.name)
 
 if __name__ == "__main__":
     unittest.main()
