@@ -99,4 +99,3 @@ def call_bt2_align(read_seqs,
     subprocess.call([" ".join(["bowtie2", bowtie_args, index_fp, "-c",
                                read_seqs, "-S", output_fp])],
                     shell=True)
-
