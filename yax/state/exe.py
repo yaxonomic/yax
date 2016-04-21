@@ -45,6 +45,30 @@ class ExeNode:
             returns = tuple([returns])
         return returns
 
+    def __call__(self,
+                 working_dir,
+                 output,
+                 details,
+                 input_artifacts,
+                 input_params):
+        """
+        """
+        input_ = {
+            'output': output,
+            'working_dir': working_dir,
+            'details': details
+        }
+
+        input_.update(input_artifacts)
+        input_.update(input_params)
+        outputs = self.module(**input_)
+        if type(outputs) is not tuple:
+            outputs = (outputs,)
+
+        for output in outputs:
+            output.complete()
+        return outputs
+
 
 class ExeGraph:
     @classmethod
