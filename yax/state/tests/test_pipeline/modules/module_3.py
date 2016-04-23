@@ -4,7 +4,7 @@ from yax.state.tests.test_pipeline.artifacts.artifact_d import ArtifactD
 from yax.state.type.parameter import File
 
 
-def main(working_dir, output, art_b: ArtifactB, art_c: ArtifactC,
+def main(working_dir, output, details, art_b: ArtifactB, art_c: ArtifactC,
          input_file: File) -> ArtifactD:
     art_d = output
 

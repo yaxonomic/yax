@@ -4,7 +4,7 @@ from yax.state.tests.test_pipeline.artifacts.artifact_y import ArtifactY
 from yax.state.type import Directory, Float
 
 
-def main(working_dir, output, art_a: ArtifactA, art_d: ArtifactD,
+def main(working_dir, output, details, art_a: ArtifactA, art_d: ArtifactD,
          input_dir: Directory, input_default_float: Float=11.1) -> ArtifactY:
     art_y = output
 
