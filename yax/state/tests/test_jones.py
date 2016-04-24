@@ -37,14 +37,15 @@ class TestIndiana(unittest.TestCase):
 
     def test_prepare(self):
         indiana = Indiana(self.yax_dir, pipeline=self.arch_config_fp)
-        with tempfile.NamedTemporaryFile(mode='w') as fh:
+        with tempfile.NamedTemporaryFile(mode='w', dir=self.yax_dir,
+                                         suffix='.ini') as fh:
             config = configparser.ConfigParser()
             config.read(get_data_path('test_run.ini'))
             config['module3']['input_file'] = self.arch_config_fp
             config['module4']['input_dir'] = self.yax_dir
             config.write(fh)
             fh.flush()
-            indiana.prepare(fh.name)
+            indiana.prepare(fh.name[:-4])
 
 if __name__ == "__main__":
     unittest.main()

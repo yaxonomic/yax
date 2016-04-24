@@ -55,7 +55,8 @@ def prep(run_key):
     indiana = Indiana(os.getcwd())
     existing_key = indiana.prepare(run_key)
     if existing_key:
-        click.echo("Matching run key found and re-prepared: %r." % existing_key)
+        click.echo("Matching run key found and re-prepared: %r."
+                   % existing_key)
 
 
 @cli.command("engage", help='Start a run.')
