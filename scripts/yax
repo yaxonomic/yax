@@ -45,7 +45,7 @@ def init(pipeline, run_key):
         raise ValueError("No arguments provided.")
     indiana = Indiana(os.getcwd(), pipeline=pipeline)
     if run_key is not None:
-        indiana.init(run_key)
+        indiana.write_config(run_key)
 
 
 @cli.command("prep", help='Prepare a run.')
