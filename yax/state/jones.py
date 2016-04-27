@@ -285,7 +285,7 @@ class Indiana:
             these_run_keys = []
             for r_id in r_ids:
                 these_run_keys.append\
-                    (self.map._select_all_from('Run': {'id': r_id}))
+                    (self.map._select_all_from('Run', {'id': r_id}))
             art_ids_to_run_keys[a_id] = these_run_keys
 
         return art_ids_to_run_keys
@@ -332,10 +332,10 @@ class Indiana:
 
         # identify artifacts to remove that are only associated to this run_key
         art_ids_to_remove = []
-        for run_key, art_ids in run_keys_to_art_ids.items()
+        for run_key, art_ids in run_keys_to_art_ids.items():
             art_ids_to_run_keys = get_art_ids_to_run_keys(art_ids)
             for art_id, run_keys in art_ids_to_run_keys.items():
-                if len(run_keys) = 1:
+                if len(run_keys) == 1:
                     art_ids_to_remove.append(art_id)
 
         # check if artifacts are final_user_output
