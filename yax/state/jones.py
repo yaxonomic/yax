@@ -257,12 +257,99 @@ class Indiana:
 
         return run_keys_to_art_names
 
-    def remove_run(self, run_key):
-        pass
-        # get artifacts to remove
+    def get_art_ids_to_run_keys(self, artifact_ids):
+        """Retrieves all run keys found to be associated to provided run keys
 
-            # check if artifacts are final_user_output
-        # remove artifacts
-            # from working_dir
-            # from root_dir
-        # remove rows from db
+        Parameters
+        ----------
+            artifact_ids : list
+                contains all artifacts which the user is interested in
+                retrieving the associated run keys of
+
+        Returns
+        -------
+            dict
+                contains all run keys found to be associated to the provided
+                artifact ids
+
+        """
+        a_ids_to_r_ids = {}
+        for a_id in artifact_ids:
+            a_ids_to_r_ids[a_id] = []
+            rows = self.map._select_all_from('Artifact_Run', {'a_id': a_id})
+            for row in rows:
+                a_ids_to_r_ids[a_id].append(row[1])
+
+        art_ids_to_run_keys = {}
+        for a_id, r_ids in a_ids_to_r_ids.items():
+            these_run_keys = []
+            for r_id in r_ids:
+                these_run_keys.append\
+                    (self.map._select_all_from('Run': {'id': r_id}))
+            art_ids_to_run_keys[a_id] = these_run_keys
+
+        return art_ids_to_run_keys
+
+    def get_run_keys_to_art_ids(self, run_keys):
+        """Retrieves all artifact ids found to be associated to run_keys
+
+        Parameters
+        ----------
+            run_keys : list
+                contains list of all run_keys the user in interested in finding
+                associated artifact ids to
+
+        Returns
+        -------
+            dict
+                all artifact ids for provided run keys
+
+        """
+
+        run_keys_to_run_ids = {}
+        for run_key in run_keys:
+            row = self.map._select_all_from('Run', {'run_key': run_key})
+            run_keys_to_run_ids[run_key] = row[1]
+
+        run_keys_to_art_ids = {}
+        for run_key, run_id in run_keys_to_run_ids.items():
+            run_keys_to_art_ids[run_key] = []
+            rows = self.map._select_all_from('Artifact_Run', {'r_id': run_id})
+            for row in rows:
+                run_keys_to_art_ids[run_key].append(row[0])
+
+        return a_ids
+
+    def remove_run_key(self, run_key):
+        """Removes evidence of provided run keys
+
+        The run_key is removed from the db. All artifacts associated to only
+        that run_key are removed from the db and from directories.
+
+        """
+        # get artifacts to remove
+        run_keys_to_art_ids = get_run_keys_to_art_ids([run_key])
+
+        # identify artifacts to remove that are only associated to this run_key
+        art_ids_to_remove = []
+        for run_key, art_ids in run_keys_to_art_ids.items()
+            art_ids_to_run_keys = get_art_ids_to_run_keys(art_ids)
+            for art_id, run_keys in art_ids_to_run_keys.items():
+                if len(run_keys) = 1:
+                    art_ids_to_remove.append(art_id)
+
+        # check if artifacts are final_user_output
+        for art_id in art_ids_to_remove:
+            art_path = self.map._select_all_from('Artifact', {'id': art_id})[2]
+
+            # remove artifacts
+            try:
+                shutil.rmtree(art_path)
+            except Exception:
+                pass
+
+            # remove rows from db
+            self.map._delete_ignore_from_table('Artifact', {'id': art_id})
+            self.map._delete_ignore_from_table('Artifact_Run',
+                                               {'a_id': art_id})
+            self.map._delete_ignore_from_table('Run', {'run_key': run_key})

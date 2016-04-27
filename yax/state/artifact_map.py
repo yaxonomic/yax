@@ -459,3 +459,10 @@ class ArtifactMap:
                     run_keys_to_art_names[run_key] = [art_name]
 
         return run_keys_to_art_names
+
+    def _delete_ignore_from_table(self, table, where):
+        where_sql = " AND ".join(["%s=?" % key for key in where.keys()])
+        with auto_rollback(self.conn) as c:
+            c.execute("DELETE FROM %s WHERE %s"
+                      % (table, where_sql), tuple(where.values()))
+            return c.fetchall()
