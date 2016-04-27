@@ -35,6 +35,24 @@ def inspect():
 def remove():
     raise NotImplementedError("To be done.")
 
+@cli.command("status", help='Shows artifacts status based on `run_key`(s)')
+@click.option('-r', '--run_key', default=None)
+def status(run_key):
+    indiana = Indiana(os.getcwd())
+    run_keys_to_art_names = indiana.get_run_keys_with_arts(run_key)
+    names = [a for node in indiana.graph for a in node.output_map]
+    output_lines = ["\t".join(["run_key"] + names)]
+
+    for run_key in run_keys_to_art_names:
+        line = [run_key]
+        for name in names:
+            if name in run_keys_to_art_names[run_key]:
+                line.append("\u2713")
+            else:
+                line.append("\u2717")
+        output_lines.append("\t".join(line))
+
+    click.echo("\n".join(output_lines))
 
 @cli.command("init", help='Create a yax pipeline/config.')
 @click.option('-p', '--pipeline', default=None)

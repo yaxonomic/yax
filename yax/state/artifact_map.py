@@ -2,7 +2,7 @@ import os
 import sqlite3
 import contextlib
 
-from yax.state.type import Int, Str, Float, File, Directory
+from yax.state.type import Int, Str, Float, File, Directory, Artifact
 
 
 @contextlib.contextmanager
@@ -333,6 +333,18 @@ class ArtifactMap:
                       % (table, where_sql), tuple(where.values()))
             return c.fetchall()
 
+    def _select_all_rows(self, table):
+        with auto_rollback(self.conn) as c:
+            c.execute("SELECT * FROM %s" % table)
+            return c.fetchall()
+
+    def get_existing_run_keys(self):
+        rows = self._select_all_rows('Run')
+        run_keys = []
+        for row in rows:
+            run_keys.append(row[4])
+        return run_keys
+
     def _find_existing_artifacts(self, artifact_name, params):
         sql = """
             SELECT A.id, R.id FROM
@@ -350,7 +362,23 @@ class ArtifactMap:
             c.execute(sql, args)
             return c.fetchall()
 
+<<<<<<< Updated upstream
     # The following are all database inititalization helpers.
+=======
+    def get_all_artifacts(self):
+        sql = """
+            SELECT A.name, A.path, R.run_key FROM
+                (SELECT * FROM Run) AS R
+            INNER JOIN
+                Artifact_Run AS AR ON R.id = AR.run_id
+            INNER JOIN
+                Artifact AS A ON A.id = AR.artifact_id
+        """
+
+        with auto_rollback(self.conn) as c:
+            c.execute(sql)
+            return c.fetchall()
+>>>>>>> Stashed changes
 
     def _init_database(self):
         with auto_rollback(self.conn) as c:
@@ -410,3 +438,27 @@ class ArtifactMap:
             max_len = max(map(len, def_cols))
             new_cols.append([c + (" " * (max_len - len(c))) for c in def_cols])
         return ['    '.join(column).rstrip() for column in zip(*new_cols)]
+
+    def get_complete_arts_for_run_key(self, run_key):
+        complete_arts = []
+        art_fps = self.get_artifact_paths(
+            self._select_all_from('Run', {'run_key': run_key})[0])
+        for art_name, art_fp in art_fps.values():
+            this_art = Artifact.declare(art_fp, None)
+            if this_art.is_complete:
+                complete_arts.append(art_name)
+
+        return complete_arts
+
+    def get_complete_arts_for_all_run_keys(self):
+        rows = self.get_all_artifacts()
+        run_keys_to_art_names = {}
+        for art_name, art_path, run_key in rows:
+            this_art = Artifact.declare(art_path, None)
+            if this_art.is_complete:
+                if run_key in run_keys_to_art_names:
+                    run_keys_to_art_names[run_key].append(art_name)
+                else:
+                    run_keys_to_art_names[run_key] = [art_name]
+
+        return run_keys_to_art_names

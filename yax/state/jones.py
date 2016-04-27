@@ -242,3 +242,27 @@ class Indiana:
         except ValueError:
             raise ValueError("Field %r must be %s."
                              % (key, type_.__name__.lower()))
+
+    def display_available_run_keys(self):
+        run_keys = self.map.get_existing_run_keys()
+        return "\n".join(run_keys)
+
+    def get_run_keys_with_arts(self, run_key):
+        if not run_key:
+            run_keys_to_art_names = \
+                self.map.get_complete_arts_for_all_run_keys()
+        else:
+            complete_arts = self.map.get_complete_arts_for_run_key(run_key)
+            run_keys_to_art_names = {specific_run_key: complete_arts}
+
+        return run_keys_to_art_names
+
+    def remove_run(self, run_key):
+        pass
+        # get artifacts to remove
+
+            # check if artifacts are final_user_output
+        # remove artifacts
+            # from working_dir
+            # from root_dir
+        # remove rows from db
