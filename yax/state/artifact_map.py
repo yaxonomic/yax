@@ -342,7 +342,7 @@ class ArtifactMap:
         rows = self._select_all_rows('Run')
         run_keys = []
         for row in rows:
-            run_keys.append(row[4])
+            run_keys.append(row[1])
         return run_keys
 
     def _find_existing_artifacts(self, artifact_name, params):
@@ -362,9 +362,7 @@ class ArtifactMap:
             c.execute(sql, args)
             return c.fetchall()
 
-<<<<<<< Updated upstream
     # The following are all database inititalization helpers.
-=======
     def get_all_artifacts(self):
         sql = """
             SELECT A.name, A.path, R.run_key FROM
@@ -378,7 +376,6 @@ class ArtifactMap:
         with auto_rollback(self.conn) as c:
             c.execute(sql)
             return c.fetchall()
->>>>>>> Stashed changes
 
     def _init_database(self):
         with auto_rollback(self.conn) as c:
