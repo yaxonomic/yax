@@ -7,6 +7,21 @@ from yax.state.type import Int, Str, Float, File, Directory
 
 @contextlib.contextmanager
 def auto_rollback(conn):
+    """Create a contextual cursor which automatically rollbacks/commit changes.
+
+    On an exception, the cursor will be rolled back. Otherwise the cursor's
+    changes are committed to the database and the cursor is closed.
+
+    Parameters
+    ----------
+    conn : sqlite3.connection
+        A connection to a sqlite3 database
+
+    Yields
+    ------
+        A safe sqlite3.cursor with automatic rollback and commits
+
+    """
     cursor = conn.cursor()
     try:
         yield cursor
@@ -21,6 +36,23 @@ def auto_rollback(conn):
 
 class ArtifactMap:
     def __init__(self, artifact_dir, db_fp, exe_graph):
+        """Initialize an ArtifactMap
+
+        If the database has not yet been created, the `exe_graph` will be
+        traversed to generate a schema.
+
+        Parameters
+        ----------
+        artifact_dir : path to directory
+            The root directory in which to store artifacts
+        db_fp : filepath
+            Where to place the database
+        exe_graph : ExeGraph
+            An instance of the pipeline
+
+        """
+        # sqlite3.connect will create a database if it doesn't already exist,
+        # so cache existence before connection
         db_exists = os.path.isfile(db_fp)
 
         self.graph = exe_graph
@@ -30,34 +62,82 @@ class ArtifactMap:
         if not db_exists:
             self._init_database()
 
-    def get_params(self, run_id, node):
+    def get_arguments_for_node(self, node, run_id):
+        """Get the input arguments for a given node from the database.
+
+        Paramters
+        ---------
+        node : ExeNode
+            The node to get corresponding arguments for.
+        run_id : int
+            The run ID for which the arguments are associated.
+
+        Returns
+        -------
+        dict
+            Maps node input arguments names to their values for a `run_id`
+
+        Raises
+        ------
+        LookupError
+            Raised when the `run_id` does not exist in the database.
+
+        """
         input_params = node.get_input_params().keys()
         params_names = ["_".join([node.name, key]) for key in input_params]
-        self._select_all_from('Run', {'id': run_id})
-
         sql = """
             SELECT %s FROM Run WHERE id = ?
         """ % ','.join(params_names)
         with auto_rollback(self.conn) as c:
             c.execute(sql, (run_id,))
-            return dict(zip(input_params, c.fetchone()))
+            values = c.fetchone()
+        if values is None:
+            raise LookupError("Provided `run_id` (%r) does not exist."
+                              % run_id)
+        return dict(zip(input_params, values))
 
     def declare_artifacts(self, config, run_id):
-        for bound_artifact, nodes in self.graph.artifact_dependencies.items():
-            params = self._flatten_config({node.name: config[node.name]
-                                           for node in nodes})
-            rows = self._find_existing_artifacts(bound_artifact, params)
+        """Declare artifacts which are not yet associated with `run_id`.
+
+        If an artifact has already been created with arguments matching its
+        position in the pipeline, associate it with this `run_id`. Otherwise,
+        create a new artifact and associate it with this `run_id`.
+
+        Parameters
+        ----------
+        config : dict of dicts
+            Maps section name to dict of parameters and their arguments.
+        run_id : int
+            The run ID to associate the new (or existing) artifacts with.
+
+        Returns
+        -------
+        None
+
+        """
+        for bound_artifact, nodes in \
+                self.graph.bound_artifact_to_upstream_nodes.items():
+            # Only the params which impact the creation of the artifact need
+            # to be checked for.
+            relevant_params = self._flatten_config(
+                {node.name: config[node.name] for node in nodes})
+
+            rows = self._find_existing_artifacts(bound_artifact,
+                                                 relevant_params)
             if len(rows) == 0:
-                self._declare_new_artifact(run_id, bound_artifact)
+                self._declare_new_artifact(bound_artifact, run_id)
             else:
-                for aid, rid in rows:
-                    if rid == run_id:
+                for a_id, r_id in rows:
+                    if r_id == run_id:
+                        # We've encountered ourselves, something strange must
+                        # have happened during a previous prep
                         continue
                     self._insert_into(
                         'Artifact_Run',
-                        {'run_id': run_id, 'artifact_id': aid})
+                        {'run_id': run_id, 'artifact_id': a_id})
 
-    def _declare_new_artifact(self, run_id, bound_artifact):
+    def _declare_new_artifact(self, bound_artifact, run_id):
+        """Create a fresh artifact, creating the directory and entries."""
         path = os.path.join(self.artifact_dir,
                             "_".join([str(run_id), bound_artifact, 'art']))
         os.mkdir(path)
@@ -70,31 +150,94 @@ class ArtifactMap:
         self._insert_into("Artifact_Run",
                           {'run_id': run_id, 'artifact_id': artifact_id})
 
-    def create_run(self, config):
+    def declare_run(self, config):
+        """Create or find a run for the given config.
+
+        Parameters
+        ----------
+        config : dict of dicts
+            Maps section name to dict of parameters and their arguments.
+
+        Returns
+        -------
+        (int, str)
+            The first element is a run ID, created or otherwise. The second is
+            an existing run key if am identical run exists, otherwise an empty
+            string.
+
+        Raises
+        ------
+        ValueError
+            Raised when a config contains a run key which is already in the
+            database with differing arguments.
+
+        """
         config = self._flatten_config(config)
         run_id = self._insert_into("Run", config)
         run_key = ""
         if not run_id:
-            config.pop("run_key")
+            # The insert failed, this could be for 2 reasons:
+            # - UNIQUE constraint on run_key failed
+            # - UNIQUE constraint on all parameters failed
+            debug_run_key = config.pop("run_key")
             row = self._select_all_from('Run', config)
             if not row:
-                raise Exception("This run_key already exists.")
+                # It wasn't the constraint on all parameters
+                raise ValueError("This run key %r already exists."
+                                 % debug_run_key)
             else:
+                # Identical run has already happened, use it instead
                 row, = row
-
-            run_id = row[0]
-            run_key = row[1]
+                run_id = row[0]
+                run_key = row[1]
 
         return run_id, run_key
 
-    def resolve_run_key(self, run_key):
+    def run_key_to_run_id(self, run_key):
+        """Convert a `run_key` to a run ID.
+
+        Parameters
+        ----------
+        run_key : str
+            A run key to search for.
+
+        Returns
+        -------
+        int
+            The run ID
+
+        Raises
+        ------
+        LookupError
+            Raised if the `run_key` does not exist.
+
+        """
+
         rows = self._select_all_from('Run', {'run_key': run_key})
         if not rows:
-            raise ValueError("Run key %r does not exist or has not"
-                             " been prepared." % run_key)
+            raise LookupError("Run key %r does not exist or has not"
+                              " been prepared." % run_key)
         return rows[0][0]
 
-    def get_artifact_paths(self, run_id):
+    def bound_artifact_to_filepath(self, run_id):
+        """Maps bound artifact names to the filepaths associated with `run_id`.
+
+        Parameters
+        ----------
+        run_id : int
+            Artifact filepaths returned will be associated with this `run_id`.
+
+        Returns
+        -------
+        dict
+            Maps bound artifact names to their filepaths
+
+        Raises
+        ------
+        LookupError
+            Raised when `run_id` does not exist or does not have any artifacts.
+
+        """
         sql = '''
             SELECT A.name, A.path FROM
                 Artifact AS A
@@ -105,9 +248,32 @@ class ArtifactMap:
         '''
         with auto_rollback(self.conn) as c:
             c.execute(sql, (run_id,))
-            return dict(c.fetchall())
+            rows = c.fetchall()
+
+        if not rows:
+            raise LookupError("`run_id` (%r) does not exist or does not have"
+                              " any artifacts")
+        return dict(rows)
 
     def get_details(self, run_id):
+        """Gets the pipeline details from the database for a given `run_id`.
+
+        Parameters
+        ----------
+        run_id : int
+            The run ID for which to get the associated pipeline details.
+
+        Returns
+        -------
+        dict
+            Maps pipeline details parameters to their arguments for a `run_id`.
+
+        Raises
+        ------
+        LookupError
+            Raised if a `run_id` does not exist.
+
+        """
         details = sorted([x if x == 'run_key' else 'details_' + x
                           for x in self.graph.details])
         sql = """
@@ -115,25 +281,40 @@ class ArtifactMap:
         """ % ','.join(details)
         with auto_rollback(self.conn) as c:
             c.execute(sql, (run_id,))
+            result = c.fetchone()
 
-            details_ = []
-            for detail in details:
-                if detail.startswith("details_"):
-                    detail = detail[len("details_"):]
-                details_.append(detail)
+        if result is None:
+            raise LookupError("`run_id` (%r) does not exist." % run_id)
 
-            return dict(zip(details_, c.fetchone()))
+        details_ = []
+        for detail in details:
+            if detail.startswith("details_"):
+                detail = detail.split("_", 1)[1]
+            details_.append(detail)
+
+        return dict(zip(details_, result))
 
     def _flatten_config(self, config):
+        """Flatten a dict of dicts into a dict namespaced by the outer key."""
         results = {}
         for section_key, section in config.items():
             for key, value in section.items():
                 results["%s_%s" % (section_key, key)] = value
-        if "details_run_key" in results:
+        if 'details_run_key' in results:
             results['run_key'] = results.pop("details_run_key")
         return results
 
     def _insert_into(self, table, values):
+        """Insert values into a table, ignoring constraint failures (no op).
+
+        Parameters
+        ----------
+        table : str
+            The name of the table to insert into.
+        values : dict
+            Mapping of column names to arguments to insert as a new row.
+
+        """
         with auto_rollback(self.conn) as c:
             # SQL Injection is possible, but honestly, all you would accomplish
             # is screwing up a directory. We still use '?' because it would be
@@ -168,6 +349,8 @@ class ArtifactMap:
             args = tuple(list(params.values()) + [artifact_name])
             c.execute(sql, args)
             return c.fetchall()
+
+    # The following are all database inititalization helpers.
 
     def _init_database(self):
         with auto_rollback(self.conn) as c:

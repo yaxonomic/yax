@@ -87,14 +87,37 @@ class ExeGraph:
         self.details = {'run_key': Str}
 
     @property
-    def artifact_dependencies(self):
+    def bound_artifact_to_upstream_nodes(self):
+        r"""Map bound artifact names to the nodes which spawned them.
+
+        If the pipeline looked like this:
+
+              / -- Node3 ---- Node4
+        Node1 ---- Node2 -- /
+
+        with bound artifacts:
+            Node1: foo
+            Node2: bar
+            Node3: baz
+            Node4: fiz
+
+        The results would be:
+
+        {
+            'foo': {Node1},
+            'bar': {Node2, Node1},
+            'baz': {Node3, Node1},
+            'fiz': {Node4, Node3, Node2, Node1}
+        }
+
+        """
         node_dependencies = {}
-        adjm = self.adjacency_matrix
+        adj_m = self.adjacency_matrix
         for node in self:
             dependency = set([node])
             node_dependencies[node] = dependency
-            for n in adjm:
-                if node in adjm[n]:
+            for n in adj_m:
+                if node in adj_m[n]:
                     dependency |= set([n]) | node_dependencies[n]
         results = {}
         for node, dependencies in node_dependencies.items():

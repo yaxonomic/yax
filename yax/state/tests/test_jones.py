@@ -30,7 +30,7 @@ class TestIndiana(unittest.TestCase):
         with self.assertRaises(ValueError):
             Indiana(self.yax_dir, pipeline=self.arch_config_fp)
 
-        indiana.init('test_run')
+        indiana.write_config('test_run')
 
         self.assertTrue(os.path.exists(os.path.join(self.yax_dir,
                                                     'test_run.ini')))
