@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import contextlib
+import collections
 
 from yax.state.type import Int, Str, Float, File, Directory, Artifact
 
@@ -127,14 +128,11 @@ class ArtifactMap:
             if len(rows) == 0:
                 self._declare_new_artifact(bound_artifact, run_id)
             else:
-                for a_id, r_id in rows:
-                    if r_id == run_id:
-                        # We've encountered ourselves, something strange must
-                        # have happened during a previous prep
-                        continue
-                    self._insert_into(
-                        'Artifact_Run',
-                        {'run_id': run_id, 'artifact_id': a_id})
+                a_id, _ = rows[0]
+                self._insert_into(
+                    'Artifact_Run',
+                    {'run_id': run_id, 'artifact_id': a_id})
+
 
     def _declare_new_artifact(self, bound_artifact, run_id):
         """Create a fresh artifact, creating the directory and entries."""
@@ -192,6 +190,30 @@ class ArtifactMap:
                 run_key = row[1]
 
         return run_id, run_key
+
+    def get_full_run_configuration(self, run_key):
+        config = collections.OrderedDict({
+            'details': collections.OrderedDict({'run_key': run_key})
+        })
+        with auto_rollback(self.conn) as c:
+            # Need to keep the cursor open for cursor.description
+            c.execute("SELECT * FROM Run WHERE run_key = ?", (run_key,))
+            results = c.fetchone()
+            if results is None:
+                raise LookupError("Run key %r does not exist or has not"
+                                  " been prepared." % run_key)
+            for key, value in zip(map(lambda x: x[0], c.description),
+                                  results):
+                if key == 'id' or key == 'run_key':
+                    pass
+                else:
+                    section, key = key.split("_", 1)
+                    if section not in config:
+                        config[section] = collections.OrderedDict()
+                    config[section][key] = value
+        return config
+
+
 
     def run_key_to_run_id(self, run_key):
         """Convert a `run_key` to a run ID.
@@ -366,7 +388,7 @@ class ArtifactMap:
     def get_all_artifacts(self):
         sql = """
             SELECT A.name, A.path, R.run_key FROM
-                (SELECT * FROM Run) AS R
+                Run AS R
             INNER JOIN
                 Artifact_Run AS AR ON R.id = AR.run_id
             INNER JOIN
@@ -389,7 +411,8 @@ class ArtifactMap:
                 artifact_id    INTEGER    NOT NULL,
                 run_id         INTEGER    NOT NULL,
                 FOREIGN KEY(artifact_id) REFERENCES Artifact(id),
-                FOREIGN KEY(run_id) REFERENCES Run(id)
+                FOREIGN KEY(run_id) REFERENCES Run(id),
+                UNIQUE(artifact_id, run_id)
             )
             ''')
 
@@ -438,9 +461,9 @@ class ArtifactMap:
 
     def get_complete_arts_for_run_key(self, run_key):
         complete_arts = []
-        art_fps = self.get_artifact_paths(
-            self._select_all_from('Run', {'run_key': run_key})[0])
-        for art_name, art_fp in art_fps.values():
+        art_fps = self.bound_artifact_to_filepath(
+            self.run_key_to_run_id(run_key))
+        for art_name, art_fp in art_fps.items():
             this_art = Artifact.declare(art_fp, None)
             if this_art.is_complete:
                 complete_arts.append(art_name)
@@ -449,14 +472,12 @@ class ArtifactMap:
 
     def get_complete_arts_for_all_run_keys(self):
         rows = self.get_all_artifacts()
-        run_keys_to_art_names = {}
+        run_keys_to_art_names = collections.OrderedDict()
         for art_name, art_path, run_key in rows:
-            this_art = Artifact.declare(art_path, None)
-            if this_art.is_complete:
-                if run_key in run_keys_to_art_names:
-                    run_keys_to_art_names[run_key].append(art_name)
-                else:
-                    run_keys_to_art_names[run_key] = [art_name]
+            if run_key not in run_keys_to_art_names:
+                run_keys_to_art_names[run_key] = []
+            if Artifact.declare(art_path, None).is_complete:
+                run_keys_to_art_names[run_key].append(art_name)
 
         return run_keys_to_art_names
 

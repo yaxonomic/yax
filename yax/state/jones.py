@@ -2,6 +2,7 @@ import configparser
 import os
 import shutil
 import tempfile
+import io
 
 from yax.state.exe import ExeGraph
 from yax.state.artifact_map import ArtifactMap
@@ -124,6 +125,11 @@ class Indiana:
         return existing_run_key
 
     def engage(self, run_key):
+        # check configuration still valid:
+        self.read_config(
+            self.reconstruct_config(run_key),
+            alt_reader=lambda config, handle: config.read_string(handle))
+
         run_id = self.map.run_key_to_run_id(run_key)
         art_fps = self.map.bound_artifact_to_filepath(run_id)
 
@@ -158,6 +164,14 @@ class Indiana:
         with tempfile.TemporaryDirectory(dir=self.working_dir) as working_dir:
             node(working_dir, outputs, details, input_artifacts, input_params)
 
+    def reconstruct_config(self, run_key):
+        config = configparser.ConfigParser()
+        config.read_dict(self.map.get_full_run_configuration(run_key))
+
+        with io.StringIO() as fh:
+            config.write(fh)
+            return fh.getvalue()
+
     def write_config(self, run_key):
         fp = os.path.join(self.root_dir, '%s.ini' % run_key)
         config = configparser.ConfigParser()
@@ -181,9 +195,12 @@ class Indiana:
         with open(fp, mode='w') as fh:
             config.write(fh)
 
-    def read_config(self, config_fp):
+    def read_config(self, config_handle, alt_reader=None):
         config = configparser.ConfigParser()
-        config.read(config_fp)
+        if alt_reader is None:
+            config.read(config_handle)
+        else:
+            alt_reader(config, config_handle)
         # Verify all sections are preset
         config_sections_list = config.sections()
         config_sections = set(config_sections_list)
@@ -243,17 +260,16 @@ class Indiana:
             raise ValueError("Field %r must be %s."
                              % (key, type_.__name__.lower()))
 
-    def display_available_run_keys(self):
-        run_keys = self.map.get_existing_run_keys()
-        return "\n".join(run_keys)
+    def get_available_run_keys(self):
+        return self.map.get_existing_run_keys()
 
     def get_run_keys_with_arts(self, run_key):
-        if not run_key:
+        if run_key is None:
             run_keys_to_art_names = \
                 self.map.get_complete_arts_for_all_run_keys()
         else:
             complete_arts = self.map.get_complete_arts_for_run_key(run_key)
-            run_keys_to_art_names = {specific_run_key: complete_arts}
+            run_keys_to_art_names = {run_key: complete_arts}
 
         return run_keys_to_art_names
 

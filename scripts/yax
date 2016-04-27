@@ -26,17 +26,28 @@ def cli():
     pass
 
 
-@cli.command("inspect", help='View current study branches.')
-def inspect():
-    raise NotImplementedError("To be done.")
-
-
 @cli.command("remove", help='Remove a study branch.')
 def remove():
     raise NotImplementedError("To be done.")
 
+
+@cli.command("view", help='View the config for run.')
+@click.option('-r', '--run_key', required=True)
+@enable_debug
+def view(run_key):
+    indiana = Indiana(os.getcwd())
+    click.echo_via_pager(indiana.reconstruct_config(run_key))
+
+
+@cli.command("list", help='List existing run keys.')
+@enable_debug
+def list():
+    indiana = Indiana(os.getcwd())
+    click.echo("\n".join(indiana.get_available_run_keys()))
+
 @cli.command("status", help='Shows artifacts status based on `run_key`(s)')
 @click.option('-r', '--run_key', default=None)
+@enable_debug
 def status(run_key):
     indiana = Indiana(os.getcwd())
     run_keys_to_art_names = indiana.get_run_keys_with_arts(run_key)
