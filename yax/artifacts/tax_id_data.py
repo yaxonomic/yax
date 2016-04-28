@@ -1,5 +1,6 @@
 from yax.state.type.artifact import Artifact
 from yax.shared.utilities import taxidtool
+import os
 
 
 class TaxIDData(Artifact):
@@ -7,7 +8,10 @@ class TaxIDData(Artifact):
         self.tax_id_data = None
 
         if completed:
-            pass
+            taxidtool.parse_taxid_data(os.path.join(self.data_dir,
+                                                    "tax_id_data.yax"))
 
     def __complete__(self):
-        taxidtool.write_taxid_data(self.tax_id_data, self.data_dir)
+        taxidtool.write_taxid_data(self.tax_id_data,
+                                   os.path.join(self.data_dir,
+                                                "tax_id_data.yax"))
