@@ -39,7 +39,7 @@ def main(working_dir, output, details, identified_taxa_art: IdentifiedTaxa,
             generates InformativeAlignmentData artifact
 
     """
-    hit_data = output
+    hit_data, = output
 
     hit_data.sequences_input_fp = sequences_input_fp
     hit_data.truncation_level = "species"
