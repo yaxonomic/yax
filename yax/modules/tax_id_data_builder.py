@@ -1,5 +1,5 @@
 from yax.artifacts.tax_id_data import TaxIDData
-from yax.state.type.parameter import file
+from yax.state.type.parameter import File
 from yax.shared.utilities import taxidtool
 
 
@@ -21,8 +21,8 @@ def main(working_dir, output, details, nodes_dmp: File, names_dmp: File,
     tax_id_data = output
 
     tax_id_data.tax_id_data = taxidtool.build_taxid_data(nodes_dmp,
-                                             names_dmp,
-                                             gi_taxid_nucl_fp)
+                                                         names_dmp,
+                                                         gi_taxid_nucl_fp)
 
     output.complete
 
