@@ -132,7 +132,11 @@ class ArtifactMap:
                 self._insert_into(
                     'Artifact_Run',
                     {'run_id': run_id, 'artifact_id': a_id})
-
+                # verify path still exists:
+                row, = self._select_all_from('Artifact', {'id': a_id})
+                _, __, path = row
+                if not os.path.exists(path):
+                    os.mkdir(path)
 
     def _declare_new_artifact(self, bound_artifact, run_id):
         """Create a fresh artifact, creating the directory and entries."""
@@ -212,8 +216,6 @@ class ArtifactMap:
                         config[section] = collections.OrderedDict()
                     config[section][key] = value
         return config
-
-
 
     def run_key_to_run_id(self, run_key):
         """Convert a `run_key` to a run ID.
