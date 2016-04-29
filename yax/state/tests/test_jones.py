@@ -19,7 +19,8 @@ class TestIndiana(unittest.TestCase):
         self._yax_dir.cleanup()
 
     def test_init(self):
-        indiana = Indiana(self.yax_dir, pipeline=self.arch_config_fp)
+        indiana = Indiana(self.yax_dir, pipeline=self.arch_config_fp,
+                          init=True)
         yax = os.path.join(self.yax_dir, '.yax')
 
         self.assertTrue(os.path.exists(yax))
@@ -28,7 +29,7 @@ class TestIndiana(unittest.TestCase):
                 self.assertEqual(fh1.read(), fh2.read())
 
         with self.assertRaises(ValueError):
-            Indiana(self.yax_dir, pipeline=self.arch_config_fp)
+            Indiana(self.yax_dir, pipeline=self.arch_config_fp, init=True)
 
         indiana.write_config('test_run')
 
@@ -36,7 +37,8 @@ class TestIndiana(unittest.TestCase):
                                                     'test_run.ini')))
 
     def test_prepare(self):
-        indiana = Indiana(self.yax_dir, pipeline=self.arch_config_fp)
+        indiana = Indiana(self.yax_dir, pipeline=self.arch_config_fp,
+                          init=True)
         with tempfile.NamedTemporaryFile(mode='w', dir=self.yax_dir,
                                          suffix='.ini') as fh:
             config = configparser.ConfigParser()

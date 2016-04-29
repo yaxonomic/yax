@@ -2,6 +2,7 @@ import configparser
 import os
 import shutil
 import tempfile
+import io
 
 from yax.state.exe import ExeGraph
 from yax.state.artifact_map import ArtifactMap
@@ -46,7 +47,7 @@ class Indiana:
         # DRY does not apply here.
         return os.path.join(root, 'arch_config.py')
 
-    def __init__(self, root_dir, pipeline=None):
+    def __init__(self, root_dir, pipeline=None, init=False):
         """Initialize Indiana, will create .yax dir if not exists.
 
         Parameters
@@ -65,6 +66,9 @@ class Indiana:
         """
         self.root_dir = root_dir
         if not os.path.isdir(self.data_dir):
+            if not init:
+                raise ValueError("Current directory is not a yax pipeline,"
+                                 " see `yax init`.")
             self._init_first_time(pipeline)
         elif pipeline is not None:
             raise ValueError("'pipeline' was provided to an already"
@@ -124,6 +128,12 @@ class Indiana:
         return existing_run_key
 
     def engage(self, run_key):
+        config = self.read_config(
+            self.reconstruct_config(run_key),
+            alt_reader=lambda config, handle: config.read_string(handle))
+        run_id, _ = self.map.declare_run(config)
+        self.map.declare_artifacts(config, run_id)
+
         run_id = self.map.run_key_to_run_id(run_key)
         art_fps = self.map.bound_artifact_to_filepath(run_id)
 
@@ -158,6 +168,14 @@ class Indiana:
         with tempfile.TemporaryDirectory(dir=self.working_dir) as working_dir:
             node(working_dir, outputs, details, input_artifacts, input_params)
 
+    def reconstruct_config(self, run_key):
+        config = configparser.ConfigParser()
+        config.read_dict(self.map.get_full_run_configuration(run_key))
+
+        with io.StringIO() as fh:
+            config.write(fh)
+            return fh.getvalue()
+
     def write_config(self, run_key):
         fp = os.path.join(self.root_dir, '%s.ini' % run_key)
         config = configparser.ConfigParser()
@@ -181,9 +199,12 @@ class Indiana:
         with open(fp, mode='w') as fh:
             config.write(fh)
 
-    def read_config(self, config_fp):
+    def read_config(self, config_handle, alt_reader=None):
         config = configparser.ConfigParser()
-        config.read(config_fp)
+        if alt_reader is None:
+            config.read(config_handle)
+        else:
+            alt_reader(config, config_handle)
         # Verify all sections are preset
         config_sections_list = config.sections()
         config_sections = set(config_sections_list)
@@ -242,3 +263,133 @@ class Indiana:
         except ValueError:
             raise ValueError("Field %r must be %s."
                              % (key, type_.__name__.lower()))
+
+    def get_available_run_keys(self):
+        return self.map.get_existing_run_keys()
+
+    def get_run_keys_with_arts(self, run_key):
+        if run_key is None:
+            run_keys_to_art_names = \
+                self.map.get_complete_arts_for_all_run_keys()
+        else:
+            complete_arts = self.map.get_complete_arts_for_run_key(run_key)
+            run_keys_to_art_names = {run_key: complete_arts}
+
+        return run_keys_to_art_names
+
+    def get_art_ids_to_run_keys(self, artifact_ids):
+        """Retrieves all run keys found to be associated to provided run keys
+
+        Parameters
+        ----------
+            artifact_ids : list
+                contains all artifacts which the user is interested in
+                retrieving the associated run keys of
+
+        Returns
+        -------
+            dict
+                contains all run keys found to be associated to the provided
+                artifact ids
+
+        """
+        a_ids_to_r_ids = {}
+        for a_id in artifact_ids:
+            a_ids_to_r_ids[a_id] = []
+            rows = self.map._select_all_from('Artifact_Run', {'a_id': a_id})
+            for row in rows:
+                a_ids_to_r_ids[a_id].append(row[1])
+
+        art_ids_to_run_keys = {}
+        for a_id, r_ids in a_ids_to_r_ids.items():
+            these_run_keys = []
+            for r_id in r_ids:
+                these_run_keys.append(
+                    self.map._select_all_from('Run', {'id': r_id}))
+            art_ids_to_run_keys[a_id] = these_run_keys
+
+        return art_ids_to_run_keys
+
+# def get_run_keys_to_art_ids(self, run_keys):
+#     """Retrieves all artifact ids found to be associated to run_keys
+#
+#     Parameters
+#     ----------
+#         run_keys : list
+#             contains list of all run_keys the user in interested in finding
+#             associated artifact ids to
+#
+#     Returns
+#     -------
+#         dict
+#             all artifact ids for provided run keys
+#
+#     """
+#
+#     run_keys_to_run_ids = {}
+#     for run_key in run_keys:
+#         row = self.map._select_all_from('Run', {'run_key': run_key})
+#         run_keys_to_run_ids[run_key] = row[1]
+#
+#     run_keys_to_art_ids = {}
+#     for run_key, run_id in run_keys_to_run_ids.items():
+#         run_keys_to_art_ids[run_key] = []
+#         rows = self.map._select_all_from('Artifact_Run', {'r_id': run_id})
+#         for row in rows:
+#             run_keys_to_art_ids[run_key].append(row[0])
+#
+#     return a_ids
+
+# def remove_from_bound_artifact(self, bound_artifact, run_key):
+#     """Remove upstream artifacts spanning runs from `bound_artifact` on.
+#
+#     Returns
+#     -------
+#     list, list, function
+#     This first element is the list of affected artifacts by id, the second
+#     is affected runs by run_key, and the function will execute the order.
+#
+#     """
+#     art_to_downstream = self.graph.bound_artifact_to_downstream_nodes
+#     bound_artifacts_to_remove = itertools.chain.from_iterable(
+#         n.output_map for n in art_to_downstream[bound_artifact])
+#
+#     art_id = self.map.get_artifact(bound_artifact, run_key)
+#
+# def remove_run_key(self, run_key):
+#     """Removes evidence of provided run keys
+#
+#     The run_key is removed from the db. All artifacts associated to only
+#     that run_key are removed from the db and from directories.
+#
+#     """
+#     # get artifacts to remove
+#     run_keys_to_art_ids = get_run_keys_to_art_ids([run_key])
+#
+#     # identify artifacts to remove that are only associated to this run_key
+#     art_ids_to_remove = []
+#     for run_key, art_ids in run_keys_to_art_ids.items():
+#         art_ids_to_run_keys = get_art_ids_to_run_keys(art_ids)
+#         for art_id, run_keys in art_ids_to_run_keys.items():
+#             if len(run_keys) == 1:
+#                 art_ids_to_remove.append(art_id)
+#
+#     def finalize():
+#         # check if artifacts are final_user_output
+#         for art_id in art_ids_to_remove:
+#             _, __, art_path = self.map._select_all_from(
+#                 'Artifact', {'id': art_id})
+#
+#             # remove artifacts
+#             try:
+#                 shutil.rmtree(art_path)
+#             except Exception:
+#                 pass
+#
+#             # remove rows from db
+#             self.map._delete_ignore_from_table('Artifact', {'id': art_id})
+#             self.map._delete_ignore_from_table('Artifact_Run',
+#                                                {'a_id': art_id})
+#         self.map._delete_ignore_from_table('Run', {'run_key': run_key})
+#
+#     return art_ids_to_remove, finalize

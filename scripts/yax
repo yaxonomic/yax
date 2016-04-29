@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 import os
+import itertools
 
 import click
 
 from yax.state.jones import Indiana
+from yax import __version__
 
 
 def enable_debug(function):
@@ -26,14 +28,62 @@ def cli():
     pass
 
 
-@cli.command("inspect", help='View current study branches.')
-def inspect():
-    raise NotImplementedError("To be done.")
+@cli.command("about", help='Info about pipeline and version')
+@enable_debug
+def about():
+    indiana = Indiana(os.getcwd())
+    click.secho("YAX Version:", bold=True)
+    click.echo("  " + __version__)
+    click.secho("Modules:", bold=True)
+    click.echo("\n".join(['  %s <%s>' % (n.name, n.get_package_name())
+                          for n in indiana.graph]))
+    click.secho("Artifact \u2192 Produced:", bold=True)
+    for artifact, dep_nodes in \
+            indiana.graph.bound_artifact_to_downstream_nodes.items():
+        dependant_artifacts = ", ".join(itertools.chain.from_iterable(
+            n.output_map for n in dep_nodes))
+        click.echo("  %s \u2192 %s" % (artifact, dependant_artifacts))
 
 
 @cli.command("remove", help='Remove a study branch.')
 def remove():
     raise NotImplementedError("To be done.")
+
+
+@cli.command("view", help='View the config for run.')
+@click.option('-r', '--run_key', required=True)
+@enable_debug
+def view(run_key):
+    indiana = Indiana(os.getcwd())
+    click.echo_via_pager(indiana.reconstruct_config(run_key))
+
+
+@cli.command("list", help='List existing run keys.')
+@enable_debug
+def list():
+    indiana = Indiana(os.getcwd())
+    click.echo("\n".join(indiana.get_available_run_keys()))
+
+
+@cli.command("status", help='Shows artifacts status based on `run_key`(s)')
+@click.option('-r', '--run_key', default=None)
+@enable_debug
+def status(run_key):
+    indiana = Indiana(os.getcwd())
+    run_keys_to_art_names = indiana.get_run_keys_with_arts(run_key)
+    names = [a for node in indiana.graph for a in node.output_map]
+    output_lines = ["\t".join(["run_key"] + names)]
+
+    for run_key in run_keys_to_art_names:
+        line = [run_key]
+        for name in names:
+            if name in run_keys_to_art_names[run_key]:
+                line.append("\u2713")
+            else:
+                line.append("\u2717")
+        output_lines.append("\t".join(line))
+
+    click.echo("\n".join(output_lines))
 
 
 @cli.command("init", help='Create a yax pipeline/config.')
@@ -43,7 +93,7 @@ def remove():
 def init(pipeline, run_key):
     if pipeline is None and run_key is None:
         raise ValueError("No arguments provided.")
-    indiana = Indiana(os.getcwd(), pipeline=pipeline)
+    indiana = Indiana(os.getcwd(), pipeline=pipeline, init=True)
     if run_key is not None:
         indiana.write_config(run_key)
 

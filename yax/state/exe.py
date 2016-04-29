@@ -45,6 +45,9 @@ class ExeNode:
             returns = tuple([returns])
         return returns
 
+    def get_package_name(self):
+        return inspect.getmodule(self.module).__name__
+
     def __call__(self,
                  working_dir,
                  output,
@@ -85,6 +88,22 @@ class ExeGraph:
         self.start_nodes = []
         self.locals = {}
         self.details = {'run_key': Str}
+
+    @property
+    def bound_artifact_to_downstream_nodes(self):
+        adj_m = self.adjacency_matrix
+        results = collections.OrderedDict()
+        for node, dependencies in adj_m.items():
+            for artifact in self.output_from_node[node]:
+                results[artifact] = []
+                for dep in dependencies:
+                    if artifact in dep.input_map:
+                        results[artifact].append(dep)
+                        results[artifact].extend(reversed(adj_m[dep]))
+                seen = set()
+                results[artifact] = [x for x in results[artifact]
+                                     if not (x in seen or seen.add(x))]
+        return results
 
     @property
     def bound_artifact_to_upstream_nodes(self):
