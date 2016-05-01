@@ -44,7 +44,7 @@ class TestParameters(unittest.TestCase):
         directory = os.path.dirname(fp)
         self.assertEqual(Directory().from_string(directory), directory)
         with self.assertRaises(ValueError):
-            File().from_string("/not/a/real/directory/")
+            Directory().from_string("/not/a/real/directory/")
         with self.assertRaises(ValueError):
             Directory().from_string(fp)
         with self.assertRaises(ValueError):
