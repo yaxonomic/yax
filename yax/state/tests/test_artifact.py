@@ -13,7 +13,7 @@ class TestArtifact(unittest.TestCase):
 
     def test_is_complete(self):
         directory = os.path.join(os.path.dirname(os.path.realpath(__file__)))
-        complete_art_dir = os.path.join(directory,"data",
+        complete_art_dir = os.path.join(directory, "data",
                                         "complete_test_artifact")
         incomplete_art_dir = os.path.join(directory, "data",
                                           "incomplete_test_artifact")
