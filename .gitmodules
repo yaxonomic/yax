@@ -1,0 +1,3 @@
+[submodule "yax/shared/utilities/readprep"]
+	path = yax/shared/utilities/readprep
+	url = https://MikeDeberg@bitbucket.org/nau-icp/readprep.git
