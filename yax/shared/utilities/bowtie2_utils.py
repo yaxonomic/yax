@@ -67,3 +67,35 @@ def call_bt2_wrapper(allowed_edits,
                                "-o", output_fp,
                                "-p", allowed_threads])],
                     shell=True)
+
+
+def call_bt2_align(read_seqs,
+                   index_fp,
+                   output_fp,
+                   bowtie_args):
+    """Uses the metagenomic wrapper to run bowtie2 alignment.
+
+    The metagenomic wrapper is used to catch the output of bowtie2 and present
+    a format that matches each read to the taxids it aligned to in order of
+    edit distance.
+
+    Please note that this code is designed specifcally to operate with a SLURM
+    task management tool.
+
+    Parameters
+    ----------
+    reads_seqs : str
+        comma separated list of sequences
+    index_fp : str
+        absolute path to the index file set previously computed
+    output_fp : str
+        absolute path to location and file name where output will be written
+    Returns
+    -------
+    None
+        Produces an output file containing that results of bowtie2 alignment
+
+    """
+    subprocess.call([" ".join(["bowtie2", bowtie_args, index_fp, "-c",
+                               read_seqs, "-S", output_fp])],
+                    shell=True)

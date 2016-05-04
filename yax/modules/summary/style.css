@@ -1,0 +1,24 @@
+ul {
+    list-style: none;
+}
+
+table, th, td {
+    border: 2px solid #666;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 5px;
+}
+
+table, tr, td, th, tbody, thead, tfoot {
+    page-break-inside: avoid !important;
+}
+
+.tax-id {
+    page-break-after: always;
+}
+
+.tax-id:last-child {
+    page-break-after: avoid !important;
+}

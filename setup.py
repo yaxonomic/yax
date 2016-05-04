@@ -8,6 +8,6 @@ setup(
     version='0.0.1dev',
     long_description=long_description,
     packages=find_packages(),
-    install_requires=['click'],
+    install_requires=['click', 'matplotlib'],
     scripts=['scripts/yax']
 )
